@@ -7,6 +7,7 @@ import (
 
 	"flowforge/internal/database"
 	"flowforge/internal/models"
+	"flowforge/internal/realtime"
 )
 
 func ExecuteWithRetry(node Node) error {
@@ -33,6 +34,10 @@ func ExecuteWithRetry(node Node) error {
 			node.ID,
 			"in",
 			backoff,
+		)
+
+		realtime.SendEvent(
+			"RETRYING:" + node.ID,
 		)
 
 		time.Sleep(backoff)
@@ -97,6 +102,11 @@ func ExecuteWorkflow(def WorkflowDefinition) {
 
 				node := nodes[id]
 
+				// Realtime event
+				realtime.SendEvent(
+					"STARTED:" + node.ID,
+				)
+
 				// Create step run
 				stepRun := models.StepRun{
 					WorkflowRunID: workflowRun.ID,
@@ -116,6 +126,11 @@ func ExecuteWorkflow(def WorkflowDefinition) {
 						node.ID,
 					)
 
+					// Realtime failed event
+					realtime.SendEvent(
+						"FAILED:" + node.ID,
+					)
+
 					stepRun.Status = "FAILED"
 					stepRun.Logs = err.Error()
 
@@ -130,6 +145,11 @@ func ExecuteWorkflow(def WorkflowDefinition) {
 				stepRun.Status = "SUCCESS"
 
 				database.DB.Save(&stepRun)
+
+				// Realtime success event
+				realtime.SendEvent(
+					"SUCCESS:" + node.ID,
+				)
 
 			}(nodeID)
 		}
@@ -161,4 +181,8 @@ func ExecuteWorkflow(def WorkflowDefinition) {
 	database.DB.Save(&workflowRun)
 
 	fmt.Println("Workflow execution completed")
+
+	realtime.SendEvent(
+		"WORKFLOW_COMPLETED",
+	)
 }
