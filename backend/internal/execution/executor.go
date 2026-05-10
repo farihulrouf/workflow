@@ -114,6 +114,8 @@ func ExecuteWorkflow(
 
 	workflowFailed := false
 
+	var mu sync.Mutex
+
 	// =========================
 	// EXECUTE DAG
 	// =========================
@@ -188,7 +190,9 @@ func ExecuteWorkflow(
 
 					database.DB.Save(&stepRun)
 
+					mu.Lock()
 					workflowFailed = true
+					mu.Unlock()
 
 					return
 				}
