@@ -3,7 +3,40 @@ package execution
 import (
 	"fmt"
 	"sync"
+	"time"
 )
+
+func ExecuteWithRetry(node Node) error {
+	var err error
+
+	maxRetries := node.MaxRetries
+
+	if maxRetries == 0 {
+		maxRetries = 3
+	}
+
+	for attempt := 0; attempt <= maxRetries; attempt++ {
+
+		err = ExecuteNode(node)
+
+		if err == nil {
+			return nil
+		}
+
+		backoff := time.Duration(1<<attempt) * time.Second
+
+		fmt.Println(
+			"Retrying:",
+			node.ID,
+			"in",
+			backoff,
+		)
+
+		time.Sleep(backoff)
+	}
+
+	return err
+}
 
 func ExecuteWorkflow(def WorkflowDefinition) {
 	graph := make(map[string][]string)
@@ -34,13 +67,14 @@ func ExecuteWorkflow(def WorkflowDefinition) {
 		}
 	}
 
+	// Execute DAG
 	for len(queue) > 0 {
 		currentBatch := queue
 		queue = []string{}
 
 		var wg sync.WaitGroup
 
-		// Execute parallel batch
+		// Execute nodes in parallel
 		for _, nodeID := range currentBatch {
 			wg.Add(1)
 
@@ -49,10 +83,18 @@ func ExecuteWorkflow(def WorkflowDefinition) {
 
 				node := nodes[id]
 
-				ExecuteNode(node)
+				err := ExecuteWithRetry(node)
+
+				if err != nil {
+					fmt.Println(
+						"Node permanently failed:",
+						node.ID,
+					)
+				}
 			}(nodeID)
 		}
 
+		// Wait batch complete
 		wg.Wait()
 
 		// Update dependencies

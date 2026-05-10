@@ -1,8 +1,9 @@
 package execution
 
 type Node struct {
-	ID   string `json:"id"`
-	Type string `json:"type"`
+	ID         string `json:"id"`
+	Type       string `json:"type"`
+	MaxRetries int    `json:"max_retries"`
 }
 
 type Edge struct {

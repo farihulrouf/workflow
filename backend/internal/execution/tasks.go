@@ -1,6 +1,7 @@
 package execution
 
 import (
+	"errors"
 	"fmt"
 	"time"
 )
@@ -18,6 +19,13 @@ func ExecuteNode(node Node) error {
 
 	case "script":
 		time.Sleep(3 * time.Second)
+
+	case "fail":
+		time.Sleep(1 * time.Second)
+
+		fmt.Println("Failed:", node.ID)
+
+		return errors.New("node execution failed")
 
 	default:
 		time.Sleep(1 * time.Second)
