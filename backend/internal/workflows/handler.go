@@ -12,25 +12,33 @@ import (
 )
 
 func CreateWorkflow(c *fiber.Ctx) error {
+
 	var body CreateWorkflowRequest
 
-	// Parse request body
+	// =========================
+	// PARSE REQUEST BODY
+	// =========================
+
 	if err := c.BodyParser(&body); err != nil {
 		return c.Status(400).JSON(fiber.Map{
 			"error": "invalid request body",
 		})
 	}
 
-	// Get JWT token from middleware
+	// =========================
+	// GET USER JWT
+	// =========================
+
 	user := c.Locals("user").(*jwt.Token)
 
-	// Extract claims
 	claims := user.Claims.(jwt.MapClaims)
 
-	// Get tenant ID
 	tenantID := uint(claims["tenant_id"].(float64))
 
-	// Parse workflow definition
+	// =========================
+	// PARSE WORKFLOW DEFINITION
+	// =========================
+
 	definitionBytes, err := json.Marshal(body.Definition)
 
 	if err != nil {
@@ -41,7 +49,10 @@ func CreateWorkflow(c *fiber.Ctx) error {
 
 	var definition execution.WorkflowDefinition
 
-	err = json.Unmarshal(definitionBytes, &definition)
+	err = json.Unmarshal(
+		definitionBytes,
+		&definition,
+	)
 
 	if err != nil {
 		return c.Status(400).JSON(fiber.Map{
@@ -49,14 +60,20 @@ func CreateWorkflow(c *fiber.Ctx) error {
 		})
 	}
 
-	// Validate DAG cycle
+	// =========================
+	// VALIDATE DAG CYCLE
+	// =========================
+
 	if execution.HasCycle(definition) {
 		return c.Status(400).JSON(fiber.Map{
 			"error": "workflow contains cycle",
 		})
 	}
 
-	// Topological Sort
+	// =========================
+	// TOPOLOGICAL SORT
+	// =========================
+
 	order, err := execution.TopologicalSort(definition)
 
 	if err != nil {
@@ -65,14 +82,16 @@ func CreateWorkflow(c *fiber.Ctx) error {
 		})
 	}
 
-	// Create workflow model
+	// =========================
+	// CREATE WORKFLOW
+	// =========================
+
 	workflow := models.Workflow{
 		Name:       body.Name,
 		Definition: definitionBytes,
 		TenantID:   tenantID,
 	}
 
-	// Save to database
 	result := database.DB.Create(&workflow)
 
 	if result.Error != nil {
@@ -81,43 +100,12 @@ func CreateWorkflow(c *fiber.Ctx) error {
 		})
 	}
 
-	// Return response
+	// =========================
+	// RESPONSE
+	// =========================
+
 	return c.JSON(fiber.Map{
 		"workflow":        workflow,
 		"execution_order": order,
-	})
-}
-
-func RunWorkflow(c *fiber.Ctx) error {
-	id := c.Params("id")
-
-	var workflow models.Workflow
-
-	result := database.DB.First(&workflow, id)
-
-	if result.Error != nil {
-		return c.Status(404).JSON(fiber.Map{
-			"error": "workflow not found",
-		})
-	}
-
-	var definition execution.WorkflowDefinition
-
-	err := json.Unmarshal(
-		workflow.Definition,
-		&definition,
-	)
-
-	if err != nil {
-		return c.Status(500).JSON(fiber.Map{
-			"error": "failed to parse workflow",
-		})
-	}
-
-	// Execute workflow in background
-	go execution.ExecuteWorkflow(definition)
-
-	return c.JSON(fiber.Map{
-		"message": "workflow execution started",
 	})
 }

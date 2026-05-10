@@ -4,6 +4,7 @@ import (
 	"log"
 
 	"flowforge/internal/database"
+	"flowforge/internal/queue"
 	"flowforge/internal/realtime"
 	"flowforge/internal/routes"
 
@@ -13,24 +14,48 @@ import (
 
 func main() {
 
-	// Load environment variables
+	// =========================
+	// LOAD ENV
+	// =========================
+
 	err := godotenv.Load()
 	if err != nil {
 		log.Fatal("Error loading .env")
 	}
 
-	// Connect database
+	// =========================
+	// DATABASE
+	// =========================
+
 	database.ConnectDB()
 
-	// Start realtime broker
+	// =========================
+	// REALTIME BROKER
+	// =========================
+
 	realtime.StartBroker()
 
-	// Create Fiber app
+	// =========================
+	// QUEUE WORKER
+	// =========================
+
+	queue.StartWorker()
+
+	// =========================
+	// FIBER APP
+	// =========================
+
 	app := fiber.New()
 
-	// Setup routes
+	// =========================
+	// ROUTES
+	// =========================
+
 	routes.Setup(app)
 
-	// Start server
+	// =========================
+	// START SERVER
+	// =========================
+
 	log.Fatal(app.Listen(":8080"))
 }

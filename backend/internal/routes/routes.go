@@ -26,11 +26,18 @@ func Setup(app *fiber.App) {
 	// AUTH ROUTES
 	// =========================
 
-	app.Post("/register", auth.Register)
-	app.Post("/login", auth.Login)
+	app.Post(
+		"/register",
+		auth.Register,
+	)
+
+	app.Post(
+		"/login",
+		auth.Login,
+	)
 
 	// =========================
-	// PROTECTED TEST ROUTE
+	// AUTH TEST
 	// =========================
 
 	app.Get(
@@ -47,12 +54,14 @@ func Setup(app *fiber.App) {
 	// WORKFLOW ROUTES
 	// =========================
 
+	// Create workflow
 	app.Post(
 		"/workflows",
 		middleware.Protected(),
 		workflows.CreateWorkflow,
 	)
 
+	// Run workflow
 	app.Post(
 		"/workflows/:id/run",
 		middleware.Protected(),
@@ -63,12 +72,14 @@ func Setup(app *fiber.App) {
 	// WORKFLOW RUN ROUTES
 	// =========================
 
+	// Get all runs
 	app.Get(
 		"/workflow-runs",
 		middleware.Protected(),
 		workflows.GetWorkflowRuns,
 	)
 
+	// Get single run
 	app.Get(
 		"/workflow-runs/:id",
 		middleware.Protected(),
@@ -76,14 +87,16 @@ func Setup(app *fiber.App) {
 	)
 
 	// =========================
-	// REALTIME
+	// REALTIME ROUTES
 	// =========================
 
+	// SSE events
 	app.Get(
 		"/events",
 		realtime.StreamEvents,
 	)
 
+	// Logs stream
 	app.Get(
 		"/logs/stream",
 		handlers.StreamLogs,
