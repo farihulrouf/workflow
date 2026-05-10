@@ -87,3 +87,37 @@ func CreateWorkflow(c *fiber.Ctx) error {
 		"execution_order": order,
 	})
 }
+
+func RunWorkflow(c *fiber.Ctx) error {
+	id := c.Params("id")
+
+	var workflow models.Workflow
+
+	result := database.DB.First(&workflow, id)
+
+	if result.Error != nil {
+		return c.Status(404).JSON(fiber.Map{
+			"error": "workflow not found",
+		})
+	}
+
+	var definition execution.WorkflowDefinition
+
+	err := json.Unmarshal(
+		workflow.Definition,
+		&definition,
+	)
+
+	if err != nil {
+		return c.Status(500).JSON(fiber.Map{
+			"error": "failed to parse workflow",
+		})
+	}
+
+	// Execute workflow in background
+	go execution.ExecuteWorkflow(definition)
+
+	return c.JSON(fiber.Map{
+		"message": "workflow execution started",
+	})
+}

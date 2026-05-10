@@ -13,31 +13,31 @@ import (
 )
 
 func main() {
-	// Load .env
+	// Load environment variables
 	err := godotenv.Load()
 
 	if err != nil {
 		log.Fatal("Error loading .env")
 	}
 
-	// Connect Database
+	// Connect database
 	database.ConnectDB()
 
-	// Create Fiber App
+	// Create Fiber app
 	app := fiber.New()
 
-	// Health Check
+	// Health check
 	app.Get("/health", func(c *fiber.Ctx) error {
 		return c.JSON(fiber.Map{
 			"status": "ok",
 		})
 	})
 
-	// Auth Routes
+	// Auth routes
 	app.Post("/register", auth.Register)
 	app.Post("/login", auth.Login)
 
-	// Protected Routes
+	// Protected route
 	app.Get(
 		"/me",
 		middleware.Protected(),
@@ -48,13 +48,19 @@ func main() {
 		},
 	)
 
-	// Workflow Routes
+	// Workflow routes
 	app.Post(
 		"/workflows",
 		middleware.Protected(),
 		workflows.CreateWorkflow,
 	)
 
-	// Start Server
+	app.Post(
+		"/workflows/:id/run",
+		middleware.Protected(),
+		workflows.RunWorkflow,
+	)
+
+	// Start server
 	log.Fatal(app.Listen(":8080"))
 }

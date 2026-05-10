@@ -33,6 +33,8 @@ func ConnectDB() {
 		&models.Tenant{},
 		&models.User{},
 		&models.Workflow{},
+		&models.WorkflowRun{},
+		&models.StepRun{},
 	)
 
 	DB = database
