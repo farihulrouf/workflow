@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 
 	"flowforge/internal/database"
+	"flowforge/internal/execution"
 	"flowforge/internal/models"
 
 	"github.com/gofiber/fiber/v2"
@@ -29,8 +30,8 @@ func CreateWorkflow(c *fiber.Ctx) error {
 	// Get tenant ID
 	tenantID := uint(claims["tenant_id"].(float64))
 
-	// Convert workflow definition to JSON
-	definitionJSON, err := json.Marshal(body.Definition)
+	// Parse workflow definition
+	definitionBytes, err := json.Marshal(body.Definition)
 
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{
@@ -38,10 +39,36 @@ func CreateWorkflow(c *fiber.Ctx) error {
 		})
 	}
 
+	var definition execution.WorkflowDefinition
+
+	err = json.Unmarshal(definitionBytes, &definition)
+
+	if err != nil {
+		return c.Status(400).JSON(fiber.Map{
+			"error": "invalid workflow definition",
+		})
+	}
+
+	// Validate DAG cycle
+	if execution.HasCycle(definition) {
+		return c.Status(400).JSON(fiber.Map{
+			"error": "workflow contains cycle",
+		})
+	}
+
+	// Topological Sort
+	order, err := execution.TopologicalSort(definition)
+
+	if err != nil {
+		return c.Status(500).JSON(fiber.Map{
+			"error": "failed to sort workflow",
+		})
+	}
+
 	// Create workflow model
 	workflow := models.Workflow{
 		Name:       body.Name,
-		Definition: definitionJSON,
+		Definition: definitionBytes,
 		TenantID:   tenantID,
 	}
 
@@ -55,5 +82,8 @@ func CreateWorkflow(c *fiber.Ctx) error {
 	}
 
 	// Return response
-	return c.JSON(workflow)
+	return c.JSON(fiber.Map{
+		"workflow":        workflow,
+		"execution_order": order,
+	})
 }
