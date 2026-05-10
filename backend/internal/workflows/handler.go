@@ -109,3 +109,153 @@ func CreateWorkflow(c *fiber.Ctx) error {
 		"execution_order": order,
 	})
 }
+
+// =========================
+// GET ALL WORKFLOWS
+// =========================
+
+func GetWorkflows(c *fiber.Ctx) error {
+
+	var workflows []models.Workflow
+
+	result := database.DB.Order("id desc").Find(&workflows)
+
+	if result.Error != nil {
+		return c.Status(500).JSON(fiber.Map{
+			"error": "failed to fetch workflows",
+		})
+	}
+
+	return c.JSON(workflows)
+}
+
+// =========================
+// GET SINGLE WORKFLOW
+// =========================
+
+func GetWorkflow(c *fiber.Ctx) error {
+
+	id := c.Params("id")
+
+	var workflow models.Workflow
+
+	result := database.DB.First(
+		&workflow,
+		id,
+	)
+
+	if result.Error != nil {
+		return c.Status(404).JSON(fiber.Map{
+			"error": "workflow not found",
+		})
+	}
+
+	return c.JSON(workflow)
+}
+
+// =========================
+// UPDATE WORKFLOW
+// =========================
+
+func UpdateWorkflow(c *fiber.Ctx) error {
+
+	id := c.Params("id")
+
+	var workflow models.Workflow
+
+	result := database.DB.First(
+		&workflow,
+		id,
+	)
+
+	if result.Error != nil {
+		return c.Status(404).JSON(fiber.Map{
+			"error": "workflow not found",
+		})
+	}
+
+	var body CreateWorkflowRequest
+
+	if err := c.BodyParser(&body); err != nil {
+		return c.Status(400).JSON(fiber.Map{
+			"error": "invalid request body",
+		})
+	}
+
+	definitionBytes, err := json.Marshal(body.Definition)
+
+	if err != nil {
+		return c.Status(500).JSON(fiber.Map{
+			"error": "failed to parse workflow definition",
+		})
+	}
+
+	var definition execution.WorkflowDefinition
+
+	err = json.Unmarshal(
+		definitionBytes,
+		&definition,
+	)
+
+	if err != nil {
+		return c.Status(400).JSON(fiber.Map{
+			"error": "invalid workflow definition",
+		})
+	}
+
+	if execution.HasCycle(definition) {
+		return c.Status(400).JSON(fiber.Map{
+			"error": "workflow contains cycle",
+		})
+	}
+
+	workflow.Name = body.Name
+	workflow.Definition = definitionBytes
+
+	saveResult := database.DB.Save(&workflow)
+
+	if saveResult.Error != nil {
+		return c.Status(500).JSON(fiber.Map{
+			"error": "failed to update workflow",
+		})
+	}
+
+	return c.JSON(fiber.Map{
+		"message":  "workflow updated",
+		"workflow": workflow,
+	})
+}
+
+// =========================
+// DELETE WORKFLOW
+// =========================
+
+func DeleteWorkflow(c *fiber.Ctx) error {
+
+	id := c.Params("id")
+
+	var workflow models.Workflow
+
+	result := database.DB.First(
+		&workflow,
+		id,
+	)
+
+	if result.Error != nil {
+		return c.Status(404).JSON(fiber.Map{
+			"error": "workflow not found",
+		})
+	}
+
+	deleteResult := database.DB.Delete(&workflow)
+
+	if deleteResult.Error != nil {
+		return c.Status(500).JSON(fiber.Map{
+			"error": "failed to delete workflow",
+		})
+	}
+
+	return c.JSON(fiber.Map{
+		"message": "workflow deleted",
+	})
+}
