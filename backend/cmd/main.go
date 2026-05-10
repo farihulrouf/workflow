@@ -13,6 +13,7 @@ import (
 )
 
 func main() {
+
 	// Load environment variables
 	err := godotenv.Load()
 
@@ -33,11 +34,17 @@ func main() {
 		})
 	})
 
-	// Auth routes
+	// =========================
+	// AUTH ROUTES
+	// =========================
+
 	app.Post("/register", auth.Register)
 	app.Post("/login", auth.Login)
 
-	// Protected route
+	// =========================
+	// PROTECTED TEST ROUTE
+	// =========================
+
 	app.Get(
 		"/me",
 		middleware.Protected(),
@@ -48,19 +55,45 @@ func main() {
 		},
 	)
 
-	// Workflow routes
+	// =========================
+	// WORKFLOW ROUTES
+	// =========================
+
+	// Create workflow
 	app.Post(
 		"/workflows",
 		middleware.Protected(),
 		workflows.CreateWorkflow,
 	)
 
+	// Run workflow
 	app.Post(
 		"/workflows/:id/run",
 		middleware.Protected(),
 		workflows.RunWorkflow,
 	)
 
-	// Start server
+	// =========================
+	// WORKFLOW RUN ROUTES
+	// =========================
+
+	// Get all workflow runs
+	app.Get(
+		"/workflow-runs",
+		middleware.Protected(),
+		workflows.GetWorkflowRuns,
+	)
+
+	// Get workflow run detail
+	app.Get(
+		"/workflow-runs/:id",
+		middleware.Protected(),
+		workflows.GetWorkflowRun,
+	)
+
+	// =========================
+	// START SERVER
+	// =========================
+
 	log.Fatal(app.Listen(":8080"))
 }
