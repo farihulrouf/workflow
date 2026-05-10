@@ -9,24 +9,36 @@ import (
 
 func StreamEvents(c *fiber.Ctx) error {
 
+	fmt.Println("New SSE Connection")
+
 	c.Set("Content-Type", "text/event-stream")
 	c.Set("Cache-Control", "no-cache")
 	c.Set("Connection", "keep-alive")
-	c.Set("Transfer-Encoding", "chunked")
 
 	client := make(chan string)
 
 	Clients[client] = true
 
-	defer func() {
-		delete(Clients, client)
-		close(client)
-	}()
+	fmt.Println("Client registered")
 
 	c.Context().SetBodyStreamWriter(func(w *bufio.Writer) {
 
+		fmt.Println("SSE Stream Started")
+
+		defer func() {
+
+			fmt.Println("Client disconnected")
+
+			delete(Clients, client)
+
+			close(client)
+		}()
+
 		for {
+
 			message := <-client
+
+			fmt.Println("Writing message:", message)
 
 			fmt.Fprintf(
 				w,
@@ -34,7 +46,14 @@ func StreamEvents(c *fiber.Ctx) error {
 				message,
 			)
 
-			w.Flush()
+			err := w.Flush()
+
+			if err != nil {
+
+				fmt.Println("Flush error:", err)
+
+				return
+			}
 		}
 	})
 

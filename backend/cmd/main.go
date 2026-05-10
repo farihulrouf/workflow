@@ -19,36 +19,37 @@ func main() {
 	// =========================
 
 	err := godotenv.Load()
+
 	if err != nil {
 		log.Fatal("Error loading .env")
 	}
 
 	// =========================
-	// DATABASE
+	// CONNECT DATABASE
 	// =========================
 
 	database.ConnectDB()
 
 	// =========================
-	// REALTIME BROKER
+	// START REALTIME BROKER
 	// =========================
 
 	realtime.StartBroker()
 
 	// =========================
-	// QUEUE WORKER
+	// START QUEUE WORKER
 	// =========================
 
 	queue.StartWorker()
 
 	// =========================
-	// FIBER APP
+	// CREATE FIBER APP
 	// =========================
 
 	app := fiber.New()
 
 	// =========================
-	// ROUTES
+	// SETUP ROUTES
 	// =========================
 
 	routes.Setup(app)

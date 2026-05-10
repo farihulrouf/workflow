@@ -1,7 +1,11 @@
 package queue
 
-var JobQueue = make(chan WorkflowJob, 100)
+type Job struct {
+	WorkflowID uint
+}
 
-func Enqueue(job WorkflowJob) {
+var JobQueue = make(chan Job, 100)
+
+func Enqueue(job Job) {
 	JobQueue <- job
 }

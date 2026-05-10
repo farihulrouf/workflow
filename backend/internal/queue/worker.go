@@ -1,22 +1,77 @@
 package queue
 
 import (
-	"log"
-	"time"
+	"encoding/json"
+	"fmt"
+
+	"flowforge/internal/database"
+	"flowforge/internal/execution"
+	"flowforge/internal/models"
 )
 
 func StartWorker() {
 
 	go func() {
 
-		for {
-			job := <-JobQueue
+		for job := range JobQueue {
 
-			log.Println("processing workflow:", job.WorkflowID)
+			fmt.Println(
+				"Processing workflow:",
+				job.WorkflowID,
+			)
 
-			time.Sleep(5 * time.Second)
+			// =========================
+			// GET WORKFLOW
+			// =========================
 
-			log.Println("workflow completed:", job.WorkflowID)
+			var workflow models.Workflow
+
+			result := database.DB.First(
+				&workflow,
+				job.WorkflowID,
+			)
+
+			if result.Error != nil {
+
+				fmt.Println(
+					"Workflow not found",
+				)
+
+				continue
+			}
+
+			// =========================
+			// PARSE DEFINITION
+			// =========================
+
+			var definition execution.WorkflowDefinition
+
+			err := json.Unmarshal(
+				workflow.Definition,
+				&definition,
+			)
+
+			if err != nil {
+
+				fmt.Println(
+					"Failed parse workflow",
+				)
+
+				continue
+			}
+
+			// =========================
+			// EXECUTE WORKFLOW
+			// =========================
+
+			execution.ExecuteWorkflow(
+				workflow.ID,
+				definition,
+			)
+
+			fmt.Println(
+				"Workflow completed",
+			)
 		}
 	}()
 }

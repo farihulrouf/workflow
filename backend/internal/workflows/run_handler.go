@@ -1,11 +1,9 @@
 package workflows
 
 import (
-	"encoding/json"
-
 	"flowforge/internal/database"
-	"flowforge/internal/execution"
 	"flowforge/internal/models"
+	"flowforge/internal/queue"
 
 	"github.com/gofiber/fiber/v2"
 )
@@ -16,7 +14,10 @@ func RunWorkflow(c *fiber.Ctx) error {
 
 	var workflow models.Workflow
 
-	result := database.DB.First(&workflow, id)
+	result := database.DB.First(
+		&workflow,
+		id,
+	)
 
 	if result.Error != nil {
 		return c.Status(404).JSON(fiber.Map{
@@ -24,23 +25,20 @@ func RunWorkflow(c *fiber.Ctx) error {
 		})
 	}
 
-	var definition execution.WorkflowDefinition
+	// =========================
+	// PUSH TO QUEUE
+	// =========================
 
-	err := json.Unmarshal(
-		workflow.Definition,
-		&definition,
-	)
+	queue.Enqueue(queue.Job{
+		WorkflowID: workflow.ID,
+	})
 
-	if err != nil {
-		return c.Status(500).JSON(fiber.Map{
-			"error": "failed to parse workflow",
-		})
-	}
-
-	go execution.ExecuteWorkflow(definition)
+	// =========================
+	// RESPONSE
+	// =========================
 
 	return c.JSON(fiber.Map{
-		"message": "workflow execution started",
+		"message": "workflow added to queue",
 	})
 }
 
@@ -59,7 +57,10 @@ func GetWorkflowRun(c *fiber.Ctx) error {
 
 	var run models.WorkflowRun
 
-	result := database.DB.First(&run, id)
+	result := database.DB.First(
+		&run,
+		id,
+	)
 
 	if result.Error != nil {
 		return c.Status(404).JSON(fiber.Map{

@@ -11,6 +11,7 @@ import (
 )
 
 func ExecuteWithRetry(node Node) error {
+
 	var err error
 
 	maxRetries := node.MaxRetries
@@ -46,27 +47,50 @@ func ExecuteWithRetry(node Node) error {
 	return err
 }
 
-func ExecuteWorkflow(def WorkflowDefinition) {
+func ExecuteWorkflow(
+	workflowID uint,
+	def WorkflowDefinition,
+) {
 
-	// Create workflow run
+	// =========================
+	// CREATE WORKFLOW RUN
+	// =========================
+
 	workflowRun := models.WorkflowRun{
-		Status:    "RUNNING",
-		StartedAt: time.Now().Unix(),
+		WorkflowID: workflowID,
+		Status:     "RUNNING",
+		StartedAt:  time.Now().Unix(),
 	}
 
 	database.DB.Create(&workflowRun)
 
+	// =========================
+	// DAG STRUCTURE
+	// =========================
+
 	graph := make(map[string][]string)
+
 	inDegree := make(map[string]int)
+
 	nodes := make(map[string]Node)
 
-	// Build graph
+	// =========================
+	// BUILD NODES
+	// =========================
+
 	for _, node := range def.Nodes {
+
 		nodes[node.ID] = node
+
 		inDegree[node.ID] = 0
 	}
 
+	// =========================
+	// BUILD EDGES
+	// =========================
+
 	for _, edge := range def.Edges {
+
 		graph[edge.From] = append(
 			graph[edge.From],
 			edge.To,
@@ -75,10 +99,14 @@ func ExecuteWorkflow(def WorkflowDefinition) {
 		inDegree[edge.To]++
 	}
 
-	// Initial queue
+	// =========================
+	// INITIAL QUEUE
+	// =========================
+
 	queue := []string{}
 
 	for nodeID, degree := range inDegree {
+
 		if degree == 0 {
 			queue = append(queue, nodeID)
 		}
@@ -86,37 +114,57 @@ func ExecuteWorkflow(def WorkflowDefinition) {
 
 	workflowFailed := false
 
-	// Execute DAG
+	// =========================
+	// EXECUTE DAG
+	// =========================
+
 	for len(queue) > 0 {
+
 		currentBatch := queue
+
 		queue = []string{}
 
 		var wg sync.WaitGroup
 
-		// Execute nodes in parallel
+		// =========================
+		// PARALLEL EXECUTION
+		// =========================
+
 		for _, nodeID := range currentBatch {
+
 			wg.Add(1)
 
 			go func(id string) {
+
 				defer wg.Done()
 
 				node := nodes[id]
 
-				// Realtime event
+				// =========================
+				// REALTIME START EVENT
+				// =========================
+
 				realtime.SendEvent(
 					"STARTED:" + node.ID,
 				)
 
-				// Create step run
+				// =========================
+				// CREATE STEP RUN
+				// =========================
+
 				stepRun := models.StepRun{
 					WorkflowRunID: workflowRun.ID,
 					NodeID:        node.ID,
 					Status:        "RUNNING",
+					Logs:          "",
 				}
 
 				database.DB.Create(&stepRun)
 
-				// Execute node with retry
+				// =========================
+				// EXECUTE NODE
+				// =========================
+
 				err := ExecuteWithRetry(node)
 
 				if err != nil {
@@ -126,12 +174,16 @@ func ExecuteWorkflow(def WorkflowDefinition) {
 						node.ID,
 					)
 
-					// Realtime failed event
+					// =========================
+					// FAILED EVENT
+					// =========================
+
 					realtime.SendEvent(
 						"FAILED:" + node.ID,
 					)
 
 					stepRun.Status = "FAILED"
+
 					stepRun.Logs = err.Error()
 
 					database.DB.Save(&stepRun)
@@ -141,12 +193,16 @@ func ExecuteWorkflow(def WorkflowDefinition) {
 					return
 				}
 
-				// Success
+				// =========================
+				// SUCCESS
+				// =========================
+
 				stepRun.Status = "SUCCESS"
+
+				stepRun.Logs = "node executed successfully"
 
 				database.DB.Save(&stepRun)
 
-				// Realtime success event
 				realtime.SendEvent(
 					"SUCCESS:" + node.ID,
 				)
@@ -154,22 +210,37 @@ func ExecuteWorkflow(def WorkflowDefinition) {
 			}(nodeID)
 		}
 
-		// Wait batch complete
+		// =========================
+		// WAIT BATCH COMPLETE
+		// =========================
+
 		wg.Wait()
 
-		// Update dependencies
+		// =========================
+		// UPDATE DEPENDENCIES
+		// =========================
+
 		for _, nodeID := range currentBatch {
+
 			for _, neighbor := range graph[nodeID] {
+
 				inDegree[neighbor]--
 
 				if inDegree[neighbor] == 0 {
-					queue = append(queue, neighbor)
+
+					queue = append(
+						queue,
+						neighbor,
+					)
 				}
 			}
 		}
 	}
 
-	// Final workflow status
+	// =========================
+	// FINAL STATUS
+	// =========================
+
 	if workflowFailed {
 		workflowRun.Status = "FAILED"
 	} else {
