@@ -4,6 +4,9 @@ import (
 	"fmt"
 	"sync"
 	"time"
+
+	"flowforge/internal/database"
+	"flowforge/internal/models"
 )
 
 func ExecuteWithRetry(node Node) error {
@@ -39,6 +42,15 @@ func ExecuteWithRetry(node Node) error {
 }
 
 func ExecuteWorkflow(def WorkflowDefinition) {
+
+	// Create workflow run
+	workflowRun := models.WorkflowRun{
+		Status:    "RUNNING",
+		StartedAt: time.Now().Unix(),
+	}
+
+	database.DB.Create(&workflowRun)
+
 	graph := make(map[string][]string)
 	inDegree := make(map[string]int)
 	nodes := make(map[string]Node)
@@ -67,6 +79,8 @@ func ExecuteWorkflow(def WorkflowDefinition) {
 		}
 	}
 
+	workflowFailed := false
+
 	// Execute DAG
 	for len(queue) > 0 {
 		currentBatch := queue
@@ -83,14 +97,40 @@ func ExecuteWorkflow(def WorkflowDefinition) {
 
 				node := nodes[id]
 
+				// Create step run
+				stepRun := models.StepRun{
+					WorkflowRunID: workflowRun.ID,
+					NodeID:        node.ID,
+					Status:        "RUNNING",
+				}
+
+				database.DB.Create(&stepRun)
+
+				// Execute node with retry
 				err := ExecuteWithRetry(node)
 
 				if err != nil {
+
 					fmt.Println(
 						"Node permanently failed:",
 						node.ID,
 					)
+
+					stepRun.Status = "FAILED"
+					stepRun.Logs = err.Error()
+
+					database.DB.Save(&stepRun)
+
+					workflowFailed = true
+
+					return
 				}
+
+				// Success
+				stepRun.Status = "SUCCESS"
+
+				database.DB.Save(&stepRun)
+
 			}(nodeID)
 		}
 
@@ -108,6 +148,17 @@ func ExecuteWorkflow(def WorkflowDefinition) {
 			}
 		}
 	}
+
+	// Final workflow status
+	if workflowFailed {
+		workflowRun.Status = "FAILED"
+	} else {
+		workflowRun.Status = "SUCCESS"
+	}
+
+	workflowRun.EndedAt = time.Now().Unix()
+
+	database.DB.Save(&workflowRun)
 
 	fmt.Println("Workflow execution completed")
 }
