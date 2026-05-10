@@ -5,11 +5,11 @@ import (
 	"gorm.io/gorm"
 )
 
-type Workflow struct {
+type WorkflowVersion struct {
 	gorm.Model
 
+	WorkflowID uint           `json:"workflow_id"`
+	Version    int            `json:"version"`
 	Name       string         `json:"name"`
 	Definition datatypes.JSON `json:"definition"`
-
-	TenantID uint `json:"tenant_id"`
 }

@@ -89,6 +89,12 @@ func Setup(app *fiber.App) {
 		workflows.DeleteWorkflow,
 	)
 
+	app.Get(
+		"/workflows/:id/versions",
+		middleware.Protected(),
+		workflows.GetWorkflowVersions,
+	)
+
 	// Run workflow
 	app.Post(
 		"/workflows/:id/run",

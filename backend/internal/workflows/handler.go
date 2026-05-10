@@ -101,6 +101,19 @@ func CreateWorkflow(c *fiber.Ctx) error {
 	}
 
 	// =========================
+	// CREATE INITIAL VERSION
+	// =========================
+
+	version := models.WorkflowVersion{
+		WorkflowID: workflow.ID,
+		Version:    1,
+		Name:       workflow.Name,
+		Definition: workflow.Definition,
+	}
+
+	database.DB.Create(&version)
+
+	// =========================
 	// RESPONSE
 	// =========================
 
@@ -118,7 +131,9 @@ func GetWorkflows(c *fiber.Ctx) error {
 
 	var workflows []models.Workflow
 
-	result := database.DB.Order("id desc").Find(&workflows)
+	result := database.DB.
+		Order("id desc").
+		Find(&workflows)
 
 	if result.Error != nil {
 		return c.Status(500).JSON(fiber.Map{
@@ -182,6 +197,10 @@ func UpdateWorkflow(c *fiber.Ctx) error {
 		})
 	}
 
+	// =========================
+	// PARSE WORKFLOW DEFINITION
+	// =========================
+
 	definitionBytes, err := json.Marshal(body.Definition)
 
 	if err != nil {
@@ -203,11 +222,51 @@ func UpdateWorkflow(c *fiber.Ctx) error {
 		})
 	}
 
+	// =========================
+	// VALIDATE DAG CYCLE
+	// =========================
+
 	if execution.HasCycle(definition) {
 		return c.Status(400).JSON(fiber.Map{
 			"error": "workflow contains cycle",
 		})
 	}
+
+	// =========================
+	// GET LATEST VERSION
+	// =========================
+
+	var latestVersion models.WorkflowVersion
+
+	database.DB.
+		Where("workflow_id = ?", workflow.ID).
+		Order("version desc").
+		First(&latestVersion)
+
+	newVersion := latestVersion.Version + 1
+
+	// =========================
+	// SAVE OLD WORKFLOW VERSION
+	// =========================
+
+	version := models.WorkflowVersion{
+		WorkflowID: workflow.ID,
+		Version:    newVersion,
+		Name:       workflow.Name,
+		Definition: workflow.Definition,
+	}
+
+	versionResult := database.DB.Create(&version)
+
+	if versionResult.Error != nil {
+		return c.Status(500).JSON(fiber.Map{
+			"error": "failed to create workflow version",
+		})
+	}
+
+	// =========================
+	// UPDATE WORKFLOW
+	// =========================
 
 	workflow.Name = body.Name
 	workflow.Definition = definitionBytes
