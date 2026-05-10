@@ -6,37 +6,38 @@ import (
 	"flowforge/internal/auth"
 	"flowforge/internal/database"
 	"flowforge/internal/middleware"
+	"flowforge/internal/workflows"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/joho/godotenv"
 )
 
 func main() {
-	// Load environment variables
+	// Load .env
 	err := godotenv.Load()
 
 	if err != nil {
 		log.Fatal("Error loading .env")
 	}
 
-	// Connect database
+	// Connect Database
 	database.ConnectDB()
 
-	// Create Fiber app
+	// Create Fiber App
 	app := fiber.New()
 
-	// Health check
+	// Health Check
 	app.Get("/health", func(c *fiber.Ctx) error {
 		return c.JSON(fiber.Map{
 			"status": "ok",
 		})
 	})
 
-	// Auth routes
+	// Auth Routes
 	app.Post("/register", auth.Register)
 	app.Post("/login", auth.Login)
 
-	// Protected route
+	// Protected Routes
 	app.Get(
 		"/me",
 		middleware.Protected(),
@@ -47,6 +48,13 @@ func main() {
 		},
 	)
 
-	// Start server
+	// Workflow Routes
+	app.Post(
+		"/workflows",
+		middleware.Protected(),
+		workflows.CreateWorkflow,
+	)
+
+	// Start Server
 	log.Fatal(app.Listen(":8080"))
 }
