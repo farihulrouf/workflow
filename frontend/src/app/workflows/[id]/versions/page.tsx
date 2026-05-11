@@ -14,6 +14,7 @@ import {
   ArrowLeft,
   Clock3,
   GitBranch,
+  RotateCcw,
 } from "lucide-react";
 
 // =====================================
@@ -55,6 +56,12 @@ export default function WorkflowVersionsPage() {
   const [loading, setLoading] =
     useState(true);
 
+  const [rollingBackId, setRollingBackId] =
+    useState<number | null>(null);
+
+  const [message, setMessage] =
+    useState("");
+
   // =====================================
   // FETCH VERSIONS
   // =====================================
@@ -70,6 +77,37 @@ export default function WorkflowVersionsPage() {
       console.error(error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  // =====================================
+  // ROLLBACK
+  // =====================================
+
+  const rollbackVersion = async (
+    versionId: number
+  ) => {
+    try {
+      setRollingBackId(versionId);
+
+      setMessage("");
+
+      const response = await api.post(
+        `/workflows/${params.id}/rollback/${versionId}`
+      );
+
+      setMessage(response.data.message);
+
+      await fetchVersions();
+    } catch (error: any) {
+      console.error(error);
+
+      setMessage(
+        error?.response?.data?.error ||
+          "failed to rollback workflow"
+      );
+    } finally {
+      setRollingBackId(null);
     }
   };
 
@@ -168,6 +206,26 @@ export default function WorkflowVersionsPage() {
         </div>
 
         {/* ===================================== */}
+        {/* MESSAGE */}
+        {/* ===================================== */}
+
+        {message && (
+          <div
+            className="
+              bg-blue-50
+              border
+              border-blue-200
+              text-blue-700
+              px-5
+              py-4
+              rounded-2xl
+            "
+          >
+            {message}
+          </div>
+        )}
+
+        {/* ===================================== */}
         {/* EMPTY */}
         {/* ===================================== */}
 
@@ -258,7 +316,7 @@ export default function WorkflowVersionsPage() {
                 </div>
 
                 {/* RIGHT */}
-                <div className="grid grid-cols-2 gap-4">
+                <div className="flex gap-4">
                   <div
                     className="
                       bg-slate-50
@@ -299,6 +357,39 @@ export default function WorkflowVersionsPage() {
                     </h3>
                   </div>
                 </div>
+              </div>
+
+              {/* ACTIONS */}
+              <div className="mt-8 flex flex-wrap gap-4">
+                <button
+                  onClick={() =>
+                    rollbackVersion(version.ID)
+                  }
+                  disabled={
+                    rollingBackId === version.ID
+                  }
+                  className="
+                    inline-flex
+                    items-center
+                    gap-2
+                    bg-orange-500
+                    hover:bg-orange-600
+                    text-white
+                    px-5
+                    py-3
+                    rounded-2xl
+                    font-semibold
+                    transition
+                    disabled:opacity-50
+                  "
+                >
+                  <RotateCcw size={18} />
+
+                  {rollingBackId ===
+                  version.ID
+                    ? "Rolling back..."
+                    : "Rollback Version"}
+                </button>
               </div>
 
               {/* JSON PREVIEW */}

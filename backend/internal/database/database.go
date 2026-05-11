@@ -36,6 +36,7 @@ func ConnectDB() {
 		&models.WorkflowRun{},
 		&models.StepRun{},
 		&models.WorkflowVersion{},
+		&models.Workflow{},
 	)
 
 	DB = database

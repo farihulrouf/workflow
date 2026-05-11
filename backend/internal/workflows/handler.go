@@ -87,9 +87,10 @@ func CreateWorkflow(c *fiber.Ctx) error {
 	// =========================
 
 	workflow := models.Workflow{
-		Name:       body.Name,
-		Definition: definitionBytes,
-		TenantID:   tenantID,
+		Name:           body.Name,
+		Definition:     definitionBytes,
+		CronExpression: body.CronExpression,
+		TenantID:       tenantID,
 	}
 
 	result := database.DB.Create(&workflow)
@@ -348,6 +349,8 @@ func UpdateWorkflow(c *fiber.Ctx) error {
 
 	workflow.Name = body.Name
 	workflow.Definition = definitionBytes
+	workflow.CronExpression =
+		body.CronExpression
 
 	saveResult := database.DB.Save(&workflow)
 

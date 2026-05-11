@@ -121,7 +121,15 @@ func Setup(app *fiber.App) {
 		middleware.Protected(),
 		workflows.GetWorkflowRun,
 	)
-
+	app.Get(
+		"/health/metrics",
+		middleware.Protected(),
+		workflows.GetHealthMetrics,
+	)
+	app.Post(
+		"/webhooks/:id",
+		workflows.TriggerWorkflowWebhook,
+	)
 	// =========================
 	// REALTIME ROUTES
 	// =========================

@@ -6,6 +6,7 @@ import (
 	"flowforge/internal/database"
 	"flowforge/internal/realtime"
 	"flowforge/internal/routes"
+	"flowforge/internal/scheduler"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
@@ -69,6 +70,12 @@ func main() {
 	// =========================
 
 	routes.Setup(app)
+
+	// =========================
+	// START CRON SCHEDULER
+	// =========================
+
+	scheduler.StartScheduler()
 
 	// =========================
 	// START SERVER
