@@ -1,11 +1,14 @@
 "use client";
 
+import Link from "next/link";
+
 import {
   Search,
   Layers3,
   Activity,
   ChevronRight,
   Sparkles,
+  Plus,
 } from "lucide-react";
 
 import { useEffect, useState } from "react";
@@ -80,12 +83,12 @@ export default function WorkflowsPage() {
             shadow-blue-100
           "
         >
-          {/* Blur Effects */}
+          {/* Blur */}
           <div className="absolute top-0 right-0 w-72 h-72 bg-white/10 rounded-full blur-3xl" />
 
           <div className="absolute bottom-0 left-0 w-72 h-72 bg-white/5 rounded-full blur-3xl" />
 
-          <div className="relative z-10 flex flex-col md:flex-row md:items-center md:justify-between gap-10">
+          <div className="relative z-10 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-10">
             {/* LEFT */}
             <div className="max-w-2xl">
               <div
@@ -120,6 +123,54 @@ export default function WorkflowsPage() {
                 observe DAG processing, and track live
                 execution logs.
               </p>
+
+              {/* ACTIONS */}
+              <div className="flex items-center gap-4 mt-8">
+                <Link
+                  href="/workflows/create"
+                  className="
+                    inline-flex
+                    items-center
+                    gap-2
+                    bg-white
+                    text-blue-700
+                    px-6
+                    py-3
+                    rounded-2xl
+                    font-bold
+                    hover:bg-blue-50
+                    transition-all
+                    shadow-lg
+                  "
+                >
+                  <Plus size={20} />
+
+                  Create Workflow
+                </Link>
+
+                <Link
+                  href="/runs"
+                  className="
+                    inline-flex
+                    items-center
+                    gap-2
+                    bg-white/10
+                    border
+                    border-white/20
+                    backdrop-blur
+                    px-6
+                    py-3
+                    rounded-2xl
+                    font-semibold
+                    hover:bg-white/20
+                    transition-all
+                  "
+                >
+                  <Activity size={18} />
+
+                  View Runs
+                </Link>
+              </div>
             </div>
 
             {/* RIGHT */}
@@ -131,7 +182,8 @@ export default function WorkflowsPage() {
                 border-white/10
                 rounded-3xl
                 p-6
-                min-w-[280px]
+                min-w-[300px]
+                shadow-xl
               "
             >
               <div className="text-sm text-blue-100">
@@ -142,13 +194,13 @@ export default function WorkflowsPage() {
                 FlowForge
               </div>
 
-              <div className="mt-6 space-y-3">
+              <div className="mt-6 space-y-4">
                 <div className="flex items-center justify-between">
                   <span className="text-blue-100">
                     Workflows
                   </span>
 
-                  <span className="font-semibold">
+                  <span className="font-semibold text-lg">
                     {meta.total}
                   </span>
                 </div>
@@ -158,7 +210,7 @@ export default function WorkflowsPage() {
                     Current Page
                   </span>
 
-                  <span className="font-semibold">
+                  <span className="font-semibold text-lg">
                     {meta.page}
                   </span>
                 </div>
@@ -168,7 +220,7 @@ export default function WorkflowsPage() {
                     Realtime
                   </span>
 
-                  <span className="text-green-300 font-semibold">
+                  <span className="text-green-300 font-bold">
                     LIVE
                   </span>
                 </div>
@@ -231,7 +283,7 @@ export default function WorkflowsPage() {
 
         {/* STATS */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {/* CARD 1 */}
+          {/* CARD */}
           <div
             className="
               bg-white
@@ -272,7 +324,7 @@ export default function WorkflowsPage() {
             </div>
           </div>
 
-          {/* CARD 2 */}
+          {/* CARD */}
           <div
             className="
               bg-white
@@ -313,7 +365,7 @@ export default function WorkflowsPage() {
             </div>
           </div>
 
-          {/* CARD 3 */}
+          {/* CARD */}
           <div
             className="
               bg-white
