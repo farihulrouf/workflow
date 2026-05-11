@@ -6,7 +6,7 @@ type User struct {
 	gorm.Model
 	Email    string `gorm:"unique"`
 	Password string
-	Role     string
+	Role     string `gorm:"default:viewer"`
 
 	TenantID uint
 	Tenant   Tenant

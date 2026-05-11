@@ -58,6 +58,7 @@ func Setup(app *fiber.App) {
 	app.Post(
 		"/workflows",
 		middleware.Protected(),
+		middleware.RequireRoles("admin", "editor"),
 		workflows.CreateWorkflow,
 	)
 
@@ -76,9 +77,11 @@ func Setup(app *fiber.App) {
 	)
 
 	// Update workflow
+	// Update workflow
 	app.Put(
 		"/workflows/:id",
 		middleware.Protected(),
+		middleware.RequireRoles("admin", "editor"),
 		workflows.UpdateWorkflow,
 	)
 
@@ -86,6 +89,7 @@ func Setup(app *fiber.App) {
 	app.Delete(
 		"/workflows/:id",
 		middleware.Protected(),
+		middleware.RequireRoles("admin"),
 		workflows.DeleteWorkflow,
 	)
 
@@ -99,6 +103,7 @@ func Setup(app *fiber.App) {
 	app.Post(
 		"/workflows/:id/run",
 		middleware.Protected(),
+		middleware.RequireRoles("admin", "editor"),
 		workflows.RunWorkflow,
 	)
 
