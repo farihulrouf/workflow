@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 
 import ReactFlow, {
   Background,
@@ -23,68 +23,18 @@ interface EdgeItem {
   to: string;
 }
 
-interface LogEvent {
-  workflow_run_id: number;
-  step: string;
-  status: string;
-  message: string;
-  timestamp: number;
-}
-
 interface Props {
   nodes: NodeItem[];
   edges: EdgeItem[];
+
+  nodeStatuses: Record<string, string>;
 }
 
 export default function WorkflowGraph({
   nodes,
   edges,
+  nodeStatuses,
 }: Props) {
-  const [nodeStatus, setNodeStatus] = useState<
-    Record<string, string>
-  >({});
-
-  // =========================
-  // REALTIME SSE
-  // =========================
-
-  useEffect(() => {
-    const eventSource = new EventSource(
-      "http://localhost:8080/events"
-    );
-
-    eventSource.onmessage = (event) => {
-      try {
-        const data: LogEvent = JSON.parse(
-          event.data
-        );
-
-        if (data.step) {
-          setNodeStatus((prev) => ({
-            ...prev,
-            [data.step]: data.status,
-          }));
-        }
-      } catch (error) {
-        console.error(
-          "Realtime parse error:",
-          error
-        );
-      }
-    };
-
-    eventSource.onerror = (error) => {
-      console.error(
-        "Realtime connection error:",
-        error
-      );
-    };
-
-    return () => {
-      eventSource.close();
-    };
-  }, []);
-
   // =========================
   // NODE STYLE
   // =========================
@@ -147,7 +97,7 @@ export default function WorkflowGraph({
   const flowNodes: Node[] = useMemo(() => {
     return nodes.map((node, index) => {
       const style = getNodeStyle(
-        nodeStatus[node.id]
+        nodeStatuses[node.id]
       );
 
       return {
@@ -171,7 +121,7 @@ export default function WorkflowGraph({
               </div>
 
               <div
-                className={`
+                className="
                   inline-flex
                   items-center
                   justify-center
@@ -180,9 +130,9 @@ export default function WorkflowGraph({
                   rounded-full
                   text-xs
                   font-semibold
-                `}
+                "
               >
-                {nodeStatus[node.id] ||
+                {nodeStatuses[node.id] ||
                   "idle"}
               </div>
             </div>
@@ -204,7 +154,7 @@ export default function WorkflowGraph({
         },
       };
     });
-  }, [nodes, nodeStatus]);
+  }, [nodes, nodeStatuses]);
 
   // =========================
   // BUILD FLOW EDGES
