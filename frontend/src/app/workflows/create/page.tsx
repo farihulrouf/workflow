@@ -2,6 +2,9 @@
 
 import { useCallback, useState } from "react";
 
+import DashboardLayout from "@/components/layout/DashboardLayout";
+import api from "@/lib/api";
+
 import {
   ReactFlow,
   Background,
@@ -12,73 +15,95 @@ import {
   useEdgesState,
   Connection,
   Edge,
-} from "reactflow";
+  Node,
+} from "@xyflow/react";
 
-import "reactflow/dist/style.css";
+import "@xyflow/react/dist/style.css";
 
-import { useRouter } from "next/navigation";
-
-import DashboardLayout from "@/components/layout/DashboardLayout";
-
-import api from "@/lib/api";
-
-const initialNodes = [
-  {
-    id: "START",
-
-    position: {
-      x: 250,
-      y: 50,
-    },
-
-    data: {
-      label: "START",
-    },
-
-    style: {
-      background: "#2563eb",
-      color: "white",
-      borderRadius: 16,
-      border: "none",
-      padding: 10,
-      width: 150,
-      textAlign: "center",
-      fontWeight: 700,
-    },
-  },
-];
-
-const initialEdges: Edge[] = [];
+type FlowNode = Node<{
+  label: string;
+}>;
 
 export default function CreateWorkflowPage() {
-  const router = useRouter();
+  // =========================
+  // STATES
+  // =========================
 
   const [workflowName, setWorkflowName] =
     useState("");
 
-  const [nodes, setNodes, onNodesChange] =
-    useNodesState(initialNodes);
-
-  const [edges, setEdges, onEdgesChange] =
-    useEdgesState(initialEdges);
-
   const [saving, setSaving] = useState(false);
 
   // =========================
-  // CONNECT NODES
+  // INITIAL NODES
+  // =========================
+
+  const initialNodes: FlowNode[] = [
+    {
+      id: "start",
+
+      type: "default",
+
+      position: {
+        x: 250,
+        y: 50,
+      },
+
+      data: {
+        label: "START",
+      },
+
+      style: {
+        background: "#2563eb",
+        color: "white",
+        borderRadius: 20,
+        padding: 14,
+        width: 180,
+        border: "none",
+        textAlign: "center" as const,
+        fontWeight: 700,
+      },
+    },
+  ];
+
+  // =========================
+  // INITIAL EDGES
+  // =========================
+
+  const initialEdges: Edge[] = [];
+
+  // =========================
+  // REACT FLOW STATE
+  // =========================
+
+  const [nodes, setNodes, onNodesChange] =
+    useNodesState<FlowNode>(initialNodes);
+
+  const [edges, setEdges, onEdgesChange] =
+    useEdgesState<Edge>(initialEdges);
+
+  // =========================
+  // CONNECT EDGES
   // =========================
 
   const onConnect = useCallback(
-    (params: Edge | Connection) =>
+    (params: Connection) => {
       setEdges((eds) =>
         addEdge(
           {
             ...params,
+
             animated: true,
+
+            style: {
+              stroke: "#2563eb",
+              strokeWidth: 2,
+            },
           },
           eds
         )
-      ),
+      );
+    },
     [setEdges]
   );
 
@@ -87,29 +112,29 @@ export default function CreateWorkflowPage() {
   // =========================
 
   const addNode = () => {
-    const id = `NODE_${nodes.length + 1}`;
+    const newNode: FlowNode = {
+      id: crypto.randomUUID(),
 
-    const newNode = {
-      id,
+      type: "default",
 
       position: {
-        x: Math.random() * 400,
+        x: Math.random() * 500,
         y: Math.random() * 400,
       },
 
       data: {
-        label: id,
+        label: `NODE ${nodes.length + 1}`,
       },
 
       style: {
-        background: "#ffffff",
-        color: "#1e3a8a",
-        borderRadius: 16,
+        background: "white",
+        color: "#1e293b",
+        borderRadius: 18,
         border: "2px solid #bfdbfe",
-        padding: 10,
-        width: 160,
-        textAlign: "center",
-        fontWeight: 700,
+        padding: 14,
+        width: 180,
+        textAlign: "center" as const,
+        fontWeight: 600,
       },
     };
 
@@ -130,10 +155,7 @@ export default function CreateWorkflowPage() {
         definition: {
           nodes: nodes.map((node) => ({
             id: node.id,
-            type:
-              node.id === "START"
-                ? "start"
-                : "task",
+            type: "task",
           })),
 
           edges: edges.map((edge) => ({
@@ -143,13 +165,18 @@ export default function CreateWorkflowPage() {
         },
       };
 
-      await api.post("/workflows", payload);
+      await api.post(
+        "/workflows",
+        payload
+      );
 
-      router.push("/workflows");
+      alert("Workflow created successfully");
+
+      window.location.href = "/workflows";
     } catch (error) {
       console.error(error);
 
-      alert("failed to save workflow");
+      alert("Failed to create workflow");
     } finally {
       setSaving(false);
     }
@@ -161,57 +188,48 @@ export default function CreateWorkflowPage() {
         {/* HEADER */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-4xl font-bold text-gray-900">
+            <h1 className="text-4xl font-black text-slate-800">
               Create Workflow
             </h1>
 
             <p className="text-gray-500 mt-2">
-              Build workflow visually
+              Design your workflow visually
             </p>
           </div>
 
-          <div className="flex items-center gap-3">
-            <button
-              onClick={addNode}
-              className="
-                bg-white
-                border
-                border-blue-200
-                hover:bg-blue-50
-                text-blue-700
-                px-5
-                py-3
-                rounded-2xl
-                font-semibold
-              "
-            >
-              + Add Node
-            </button>
-
-            <button
-              onClick={saveWorkflow}
-              disabled={saving}
-              className="
-                bg-blue-600
-                hover:bg-blue-700
-                text-white
-                px-6
-                py-3
-                rounded-2xl
-                font-semibold
-                disabled:opacity-50
-              "
-            >
-              {saving
-                ? "Saving..."
-                : "Save Workflow"}
-            </button>
-          </div>
+          <button
+            onClick={saveWorkflow}
+            disabled={saving}
+            className="
+              bg-blue-600
+              hover:bg-blue-700
+              text-white
+              px-6
+              py-3
+              rounded-2xl
+              font-semibold
+              transition-all
+              disabled:opacity-50
+            "
+          >
+            {saving
+              ? "Saving..."
+              : "Save Workflow"}
+          </button>
         </div>
 
-        {/* WORKFLOW NAME */}
-        <div className="bg-white rounded-3xl border border-blue-100 p-5">
-          <label className="block mb-3 text-sm font-semibold text-gray-700">
+        {/* FORM */}
+        <div
+          className="
+            bg-white
+            rounded-3xl
+            border
+            border-blue-100
+            p-6
+            shadow-sm
+          "
+        >
+          <label className="block text-sm font-medium text-gray-600 mb-3">
             Workflow Name
           </label>
 
@@ -222,7 +240,7 @@ export default function CreateWorkflowPage() {
                 e.target.value
               )
             }
-            placeholder="my-awesome-workflow"
+            placeholder="example: ecommerce-workflow"
             className="
               w-full
               border
@@ -236,24 +254,58 @@ export default function CreateWorkflowPage() {
           />
         </div>
 
-        {/* FLOW BUILDER */}
-        <div className="bg-white rounded-3xl border border-blue-100 overflow-hidden">
-          <div className="h-[700px]">
-            <ReactFlow
-              nodes={nodes}
-              edges={edges}
-              onNodesChange={onNodesChange}
-              onEdgesChange={onEdgesChange}
-              onConnect={onConnect}
-              fitView
-            >
-              <MiniMap />
+        {/* TOOLBAR */}
+        <div className="flex items-center gap-4">
+          <button
+            onClick={addNode}
+            className="
+              bg-white
+              border
+              border-blue-100
+              hover:border-blue-300
+              px-5
+              py-3
+              rounded-2xl
+              font-medium
+              transition-all
+            "
+          >
+            + Add Node
+          </button>
+        </div>
 
-              <Controls />
+        {/* FLOW EDITOR */}
+        <div
+          className="
+            bg-white
+            rounded-[32px]
+            border
+            border-blue-100
+            overflow-hidden
+            shadow-sm
+          "
+          style={{
+            height: "700px",
+          }}
+        >
+          <ReactFlow
+            nodes={nodes}
+            edges={edges}
+            onNodesChange={
+              onNodesChange
+            }
+            onEdgesChange={
+              onEdgesChange
+            }
+            onConnect={onConnect}
+            fitView
+          >
+            <MiniMap />
 
-              <Background />
-            </ReactFlow>
-          </div>
+            <Controls />
+
+            <Background />
+          </ReactFlow>
         </div>
       </div>
     </DashboardLayout>
