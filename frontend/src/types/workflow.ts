@@ -1,5 +1,5 @@
 export interface Workflow {
-id: number;
-name: string;
-createdAt: string;
+  id: number;
+  name: string;
+  created_at?: string;
 }
