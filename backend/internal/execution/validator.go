@@ -1,9 +1,10 @@
 package execution
 
 type Node struct {
-	ID         string `json:"id"`
-	Type       string `json:"type"`
-	MaxRetries int    `json:"max_retries"`
+	ID         string                 `json:"id"`
+	Type       string                 `json:"type"`
+	MaxRetries int                    `json:"max_retries"`
+	Config     map[string]interface{} `json:"config"`
 }
 
 type Edge struct {
@@ -32,6 +33,7 @@ func HasCycle(def WorkflowDefinition) bool {
 	var dfs func(string) bool
 
 	dfs = func(node string) bool {
+
 		if recStack[node] {
 			return true
 		}
@@ -41,9 +43,11 @@ func HasCycle(def WorkflowDefinition) bool {
 		}
 
 		visited[node] = true
+
 		recStack[node] = true
 
 		for _, neighbor := range graph[node] {
+
 			if dfs(neighbor) {
 				return true
 			}
@@ -55,6 +59,7 @@ func HasCycle(def WorkflowDefinition) bool {
 	}
 
 	for _, node := range def.Nodes {
+
 		if dfs(node.ID) {
 			return true
 		}

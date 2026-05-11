@@ -50,5 +50,5 @@ func SendEvent(message string) {
 
 	fmt.Println("SSE Event:", message)
 
-	Broadcast <- message
+	PublishEvent(message)
 }

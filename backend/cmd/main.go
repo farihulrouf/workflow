@@ -4,7 +4,6 @@ import (
 	"log"
 
 	"flowforge/internal/database"
-	"flowforge/internal/queue"
 	"flowforge/internal/realtime"
 	"flowforge/internal/routes"
 
@@ -32,22 +31,29 @@ func main() {
 	database.ConnectDB()
 
 	// =========================
+	// INIT REDIS
+	// =========================
+
+	realtime.InitRedis()
+
+	// =========================
 	// START REALTIME BROKER
 	// =========================
 
 	realtime.StartBroker()
 
 	// =========================
-	// START QUEUE WORKER
+	// START REDIS SUBSCRIBER
 	// =========================
 
-	queue.StartWorker()
+	go realtime.SubscribeEvents()
 
 	// =========================
 	// CREATE FIBER APP
 	// =========================
 
 	app := fiber.New()
+
 	// =========================
 	// CORS
 	// =========================
@@ -57,6 +63,7 @@ func main() {
 		AllowMethods: "GET,POST,HEAD,PUT,DELETE,PATCH,OPTIONS",
 		AllowHeaders: "*",
 	}))
+
 	// =========================
 	// SETUP ROUTES
 	// =========================

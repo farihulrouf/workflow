@@ -22,22 +22,40 @@ func RunWorkflow(c *fiber.Ctx) error {
 	tenantID := uint(claims["tenant_id"].(float64))
 
 	result := database.DB.
-		Where("id = ? AND tenant_id = ?", id, tenantID).
+		Where(
+			"id = ? AND tenant_id = ?",
+			id,
+			tenantID,
+		).
 		First(&workflow)
 
 	if result.Error != nil {
-		return c.Status(404).JSON(fiber.Map{
-			"error": "workflow not found",
-		})
+
+		return c.Status(404).JSON(
+			fiber.Map{
+				"error": "workflow not found",
+			},
+		)
 	}
 
 	// =========================
-	// PUSH TO QUEUE
+	// PUSH TO REDIS QUEUE
 	// =========================
 
-	queue.Enqueue(queue.Job{
-		WorkflowID: workflow.ID,
-	})
+	err := queue.Enqueue(
+		queue.WorkflowJob{
+			WorkflowID: workflow.ID,
+		},
+	)
+
+	if err != nil {
+
+		return c.Status(500).JSON(
+			fiber.Map{
+				"error": err.Error(),
+			},
+		)
+	}
 
 	// =========================
 	// RESPONSE
@@ -56,27 +74,27 @@ func GetWorkflowRuns(c *fiber.Ctx) error {
 
 	tenantID := uint(claims["tenant_id"].(float64))
 
-	// =========================
-	// QUERY PARAMS
-	// =========================
-
 	page := c.QueryInt("page", 1)
+
 	limit := c.QueryInt("limit", 10)
+
 	status := c.Query("status")
 
 	offset := (page - 1) * limit
 
-	// =========================
-	// QUERY
-	// =========================
-
 	var runs []models.WorkflowRun
 
 	query := database.DB.
-		Joins("JOIN workflows ON workflows.id = workflow_runs.workflow_id").
-		Where("workflows.tenant_id = ?", tenantID)
+		Joins(
+			"JOIN workflows ON workflows.id = workflow_runs.workflow_id",
+		).
+		Where(
+			"workflows.tenant_id = ?",
+			tenantID,
+		)
 
 	if status != "" {
+
 		query = query.Where(
 			"workflow_runs.status = ?",
 			status,
@@ -90,23 +108,28 @@ func GetWorkflowRuns(c *fiber.Ctx) error {
 		Find(&runs)
 
 	if result.Error != nil {
-		return c.Status(500).JSON(fiber.Map{
-			"error": "failed to fetch workflow runs",
-		})
-	}
 
-	// =========================
-	// TOTAL COUNT
-	// =========================
+		return c.Status(500).JSON(
+			fiber.Map{
+				"error": "failed to fetch workflow runs",
+			},
+		)
+	}
 
 	var total int64
 
 	countQuery := database.DB.
 		Model(&models.WorkflowRun{}).
-		Joins("JOIN workflows ON workflows.id = workflow_runs.workflow_id").
-		Where("workflows.tenant_id = ?", tenantID)
+		Joins(
+			"JOIN workflows ON workflows.id = workflow_runs.workflow_id",
+		).
+		Where(
+			"workflows.tenant_id = ?",
+			tenantID,
+		)
 
 	if status != "" {
+
 		countQuery = countQuery.Where(
 			"workflow_runs.status = ?",
 			status,
@@ -114,10 +137,6 @@ func GetWorkflowRuns(c *fiber.Ctx) error {
 	}
 
 	countQuery.Count(&total)
-
-	// =========================
-	// RESPONSE
-	// =========================
 
 	return c.JSON(fiber.Map{
 		"data": runs,
@@ -137,12 +156,16 @@ func GetWorkflowRun(c *fiber.Ctx) error {
 
 	claims := user.Claims.(jwt.MapClaims)
 
-	tenantID := uint(claims["tenant_id"].(float64))
+	tenantID := uint(
+		claims["tenant_id"].(float64),
+	)
 
 	var run models.WorkflowRun
 
 	result := database.DB.
-		Joins("JOIN workflows ON workflows.id = workflow_runs.workflow_id").
+		Joins(
+			"JOIN workflows ON workflows.id = workflow_runs.workflow_id",
+		).
 		Where(
 			"workflow_runs.id = ? AND workflows.tenant_id = ?",
 			id,
@@ -151,15 +174,21 @@ func GetWorkflowRun(c *fiber.Ctx) error {
 		First(&run)
 
 	if result.Error != nil {
-		return c.Status(404).JSON(fiber.Map{
-			"error": "run not found",
-		})
+
+		return c.Status(404).JSON(
+			fiber.Map{
+				"error": "run not found",
+			},
+		)
 	}
 
 	var steps []models.StepRun
 
 	database.DB.
-		Where("workflow_run_id = ?", run.ID).
+		Where(
+			"workflow_run_id = ?",
+			run.ID,
+		).
 		Find(&steps)
 
 	return c.JSON(fiber.Map{

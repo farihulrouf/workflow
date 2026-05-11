@@ -2,7 +2,6 @@ package routes
 
 import (
 	"flowforge/internal/auth"
-	"flowforge/internal/handlers"
 	"flowforge/internal/middleware"
 	"flowforge/internal/realtime"
 	"flowforge/internal/workflows"
@@ -54,7 +53,6 @@ func Setup(app *fiber.App) {
 	// WORKFLOW ROUTES
 	// =========================
 
-	// Create workflow
 	app.Post(
 		"/workflows",
 		middleware.Protected(),
@@ -62,22 +60,18 @@ func Setup(app *fiber.App) {
 		workflows.CreateWorkflow,
 	)
 
-	// Get all workflows
 	app.Get(
 		"/workflows",
 		middleware.Protected(),
 		workflows.GetWorkflows,
 	)
 
-	// Get single workflow
 	app.Get(
 		"/workflows/:id",
 		middleware.Protected(),
 		workflows.GetWorkflow,
 	)
 
-	// Update workflow
-	// Update workflow
 	app.Put(
 		"/workflows/:id",
 		middleware.Protected(),
@@ -85,7 +79,6 @@ func Setup(app *fiber.App) {
 		workflows.UpdateWorkflow,
 	)
 
-	// Delete workflow
 	app.Delete(
 		"/workflows/:id",
 		middleware.Protected(),
@@ -99,7 +92,6 @@ func Setup(app *fiber.App) {
 		workflows.GetWorkflowVersions,
 	)
 
-	// Run workflow
 	app.Post(
 		"/workflows/:id/run",
 		middleware.Protected(),
@@ -111,14 +103,12 @@ func Setup(app *fiber.App) {
 	// WORKFLOW RUN ROUTES
 	// =========================
 
-	// Get all runs
 	app.Get(
 		"/workflow-runs",
 		middleware.Protected(),
 		workflows.GetWorkflowRuns,
 	)
 
-	// Get single run
 	app.Get(
 		"/workflow-runs/:id",
 		middleware.Protected(),
@@ -129,15 +119,8 @@ func Setup(app *fiber.App) {
 	// REALTIME ROUTES
 	// =========================
 
-	// SSE events
 	app.Get(
 		"/events",
 		realtime.StreamEvents,
-	)
-
-	// Logs stream
-	app.Get(
-		"/logs/stream",
-		handlers.StreamLogs,
 	)
 }

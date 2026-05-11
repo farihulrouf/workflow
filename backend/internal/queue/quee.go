@@ -1,11 +1,23 @@
 package queue
 
-type Job struct {
-	WorkflowID uint
+import "encoding/json"
+
+type WorkflowJob struct {
+	WorkflowID uint `json:"workflow_id"`
+	RunID      uint `json:"run_id"`
 }
 
-var JobQueue = make(chan Job, 100)
+func Enqueue(job WorkflowJob) error {
 
-func Enqueue(job Job) {
-	JobQueue <- job
+	jobJSON, err := json.Marshal(job)
+
+	if err != nil {
+		return err
+	}
+
+	return Redis.LPush(
+		Ctx,
+		"workflow_jobs",
+		jobJSON,
+	).Err()
 }

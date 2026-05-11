@@ -55,13 +55,13 @@ func ExecuteWithRetry(
 		backoff := time.Duration(1<<attempt) * time.Second
 
 		fmt.Println(
-			"Retrying:",
+			"RETRY NODE:",
 			node.ID,
-			"in",
+			"WAIT:",
 			backoff,
 		)
 
-		sendRealtimeEvent(
+		go sendRealtimeEvent(
 			workflowRunID,
 			node.ID,
 			"retrying",
@@ -82,9 +82,9 @@ func ExecuteWorkflow(
 	def WorkflowDefinition,
 ) {
 
-	// =========================
+	// =====================================
 	// CREATE WORKFLOW RUN
-	// =========================
+	// =====================================
 
 	workflowRun := models.WorkflowRun{
 		WorkflowID: workflowID,
@@ -92,11 +92,26 @@ func ExecuteWorkflow(
 		StartedAt:  time.Now().Unix(),
 	}
 
-	database.DB.Create(&workflowRun)
+	result := database.DB.Create(&workflowRun)
 
-	// =========================
+	if result.Error != nil {
+
+		fmt.Println("FAILED CREATE WORKFLOW RUN")
+		fmt.Println(result.Error)
+
+		return
+	}
+
+	fmt.Println("==========")
+	fmt.Println("WORKFLOW RUN CREATED")
+	fmt.Println("RUN ID:", workflowRun.ID)
+	fmt.Println("TOTAL NODES:", len(def.Nodes))
+	fmt.Println("TOTAL EDGES:", len(def.Edges))
+	fmt.Println("==========")
+
+	// =====================================
 	// DAG STRUCTURE
-	// =========================
+	// =====================================
 
 	graph := make(map[string][]string)
 
@@ -104,22 +119,39 @@ func ExecuteWorkflow(
 
 	nodes := make(map[string]Node)
 
-	// =========================
+	// =====================================
 	// BUILD NODES
-	// =========================
+	// =====================================
+
+	fmt.Println("BUILDING NODES")
 
 	for _, node := range def.Nodes {
+
+		fmt.Println(
+			"NODE:",
+			node.ID,
+			node.Type,
+		)
 
 		nodes[node.ID] = node
 
 		inDegree[node.ID] = 0
 	}
 
-	// =========================
+	// =====================================
 	// BUILD EDGES
-	// =========================
+	// =====================================
+
+	fmt.Println("BUILDING EDGES")
 
 	for _, edge := range def.Edges {
+
+		fmt.Println(
+			"EDGE:",
+			edge.From,
+			"->",
+			edge.To,
+		)
 
 		graph[edge.From] = append(
 			graph[edge.From],
@@ -129,15 +161,21 @@ func ExecuteWorkflow(
 		inDegree[edge.To]++
 	}
 
-	// =========================
+	// =====================================
 	// INITIAL QUEUE
-	// =========================
+	// =====================================
 
 	queue := []string{}
 
 	for nodeID, degree := range inDegree {
 
 		if degree == 0 {
+
+			fmt.Println(
+				"QUEUE NODE:",
+				nodeID,
+			)
+
 			queue = append(queue, nodeID)
 		}
 	}
@@ -146,9 +184,9 @@ func ExecuteWorkflow(
 
 	var mu sync.Mutex
 
-	// =========================
+	// =====================================
 	// EXECUTE DAG
-	// =========================
+	// =====================================
 
 	for len(queue) > 0 {
 
@@ -158,34 +196,39 @@ func ExecuteWorkflow(
 
 		var wg sync.WaitGroup
 
-		// =========================
-		// PARALLEL EXECUTION
-		// =========================
+		// =====================================
+		// EXECUTE BATCH
+		// =====================================
 
 		for _, nodeID := range currentBatch {
 
 			wg.Add(1)
 
-			go func(id string) {
+			func(id string) {
 
 				defer wg.Done()
 
 				node := nodes[id]
 
-				// =========================
-				// REALTIME START EVENT
-				// =========================
+				fmt.Println(
+					"START EXECUTE NODE:",
+					node.ID,
+				)
 
-				sendRealtimeEvent(
+				// =====================================
+				// REALTIME EVENT
+				// =====================================
+
+				go sendRealtimeEvent(
 					workflowRun.ID,
 					node.ID,
 					"running",
 					"node started",
 				)
 
-				// =========================
+				// =====================================
 				// CREATE STEP RUN
-				// =========================
+				// =====================================
 
 				stepRun := models.StepRun{
 					WorkflowRunID: workflowRun.ID,
@@ -194,11 +237,28 @@ func ExecuteWorkflow(
 					Logs:          "",
 				}
 
-				database.DB.Create(&stepRun)
+				result := database.DB.Create(&stepRun)
 
-				// =========================
+				if result.Error != nil {
+
+					fmt.Println("STEP RUN CREATE ERROR")
+					fmt.Println(result.Error)
+
+					mu.Lock()
+					workflowFailed = true
+					mu.Unlock()
+
+					return
+				}
+
+				fmt.Println(
+					"STEP RUN CREATED:",
+					stepRun.ID,
+				)
+
+				// =====================================
 				// EXECUTE NODE
-				// =========================
+				// =====================================
 
 				err := ExecuteWithRetry(
 					workflowRun.ID,
@@ -208,15 +268,13 @@ func ExecuteWorkflow(
 				if err != nil {
 
 					fmt.Println(
-						"Node permanently failed:",
+						"NODE FAILED:",
 						node.ID,
 					)
 
-					// =========================
-					// FAILED EVENT
-					// =========================
+					fmt.Println(err)
 
-					sendRealtimeEvent(
+					go sendRealtimeEvent(
 						workflowRun.ID,
 						node.ID,
 						"failed",
@@ -227,7 +285,18 @@ func ExecuteWorkflow(
 
 					stepRun.Logs = err.Error()
 
-					database.DB.Save(&stepRun)
+					saveResult := database.DB.Save(&stepRun)
+
+					if saveResult.Error != nil {
+
+						fmt.Println(
+							"SAVE FAILED STEP ERROR:",
+						)
+
+						fmt.Println(
+							saveResult.Error,
+						)
+					}
 
 					mu.Lock()
 					workflowFailed = true
@@ -236,35 +305,54 @@ func ExecuteWorkflow(
 					return
 				}
 
-				// =========================
+				// =====================================
 				// SUCCESS
-				// =========================
+				// =====================================
 
 				stepRun.Status = "SUCCESS"
 
-				stepRun.Logs = "node executed successfully"
+				stepRun.Logs =
+					"node executed successfully"
 
-				database.DB.Save(&stepRun)
+				saveResult := database.DB.Save(&stepRun)
 
-				sendRealtimeEvent(
+				if saveResult.Error != nil {
+
+					fmt.Println(
+						"SAVE SUCCESS STEP ERROR:",
+					)
+
+					fmt.Println(
+						saveResult.Error,
+					)
+				}
+
+				go sendRealtimeEvent(
 					workflowRun.ID,
 					node.ID,
 					"success",
 					"node executed successfully",
 				)
 
+				fmt.Println(
+					"NODE SUCCESS:",
+					node.ID,
+				)
+
 			}(nodeID)
 		}
 
-		// =========================
-		// WAIT BATCH COMPLETE
-		// =========================
+		// =====================================
+		// WAIT BATCH
+		// =====================================
 
 		wg.Wait()
 
-		// =========================
-		// UPDATE DEPENDENCIES
-		// =========================
+		fmt.Println("BATCH COMPLETED")
+
+		// =====================================
+		// UPDATE NEXT NODES
+		// =====================================
 
 		for _, nodeID := range currentBatch {
 
@@ -272,7 +360,19 @@ func ExecuteWorkflow(
 
 				inDegree[neighbor]--
 
+				fmt.Println(
+					"DECREASE INDEGREE:",
+					neighbor,
+					"=",
+					inDegree[neighbor],
+				)
+
 				if inDegree[neighbor] == 0 {
+
+					fmt.Println(
+						"NEXT QUEUE:",
+						neighbor,
+					)
 
 					queue = append(
 						queue,
@@ -283,23 +383,40 @@ func ExecuteWorkflow(
 		}
 	}
 
-	// =========================
+	// =====================================
 	// FINAL STATUS
-	// =========================
+	// =====================================
 
 	if workflowFailed {
+
 		workflowRun.Status = "FAILED"
+
 	} else {
+
 		workflowRun.Status = "SUCCESS"
 	}
 
 	workflowRun.EndedAt = time.Now().Unix()
 
-	database.DB.Save(&workflowRun)
+	saveWorkflow := database.DB.Save(&workflowRun)
 
-	fmt.Println("Workflow execution completed")
+	if saveWorkflow.Error != nil {
 
-	sendRealtimeEvent(
+		fmt.Println(
+			"FAILED SAVE WORKFLOW RUN",
+		)
+
+		fmt.Println(
+			saveWorkflow.Error,
+		)
+	}
+
+	fmt.Println("==========")
+	fmt.Println("WORKFLOW FINISHED")
+	fmt.Println("FINAL STATUS:", workflowRun.Status)
+	fmt.Println("==========")
+
+	go sendRealtimeEvent(
 		workflowRun.ID,
 		"",
 		"completed",

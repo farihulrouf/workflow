@@ -1,19 +1,40 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
-import WorkflowGraph from "@/components/WorkflowGraph";
+
+import {
+  useParams,
+  useRouter,
+} from "next/navigation";
+
 import DashboardLayout from "@/components/layout/DashboardLayout";
+import WorkflowGraph from "@/components/WorkflowGraph";
+
 import api from "@/lib/api";
+
+import {
+  Play,
+  ArrowLeft,
+  Activity,
+  GitBranch,
+  CheckCircle2,
+} from "lucide-react";
+
+// ======================================================
+// TYPES
+// ======================================================
 
 interface Workflow {
   ID: number;
+
   name: string;
+
   definition: {
     nodes: {
       id: string;
       type: string;
     }[];
+
     edges: {
       from: string;
       to: string;
@@ -21,22 +42,40 @@ interface Workflow {
   };
 }
 
+// ======================================================
+// PAGE
+// ======================================================
+
 export default function WorkflowDetailPage() {
   const params = useParams();
+
   const router = useRouter();
+
+  // ======================================================
+  // STATES
+  // ======================================================
 
   const [workflow, setWorkflow] =
     useState<Workflow | null>(null);
 
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] =
+    useState(true);
 
-  const [running, setRunning] = useState(false);
+  const [running, setRunning] =
+    useState(false);
 
-  const [message, setMessage] = useState("");
+  const [message, setMessage] =
+    useState("");
 
-  useEffect(() => {
-    fetchWorkflow();
-  }, []);
+  // realtime node statuses
+  const [nodeStatuses, setNodeStatuses] =
+    useState<Record<string, string>>(
+      {}
+    );
+
+  // ======================================================
+  // FETCH WORKFLOW
+  // ======================================================
 
   const fetchWorkflow = async () => {
     try {
@@ -52,10 +91,18 @@ export default function WorkflowDetailPage() {
     }
   };
 
+  // ======================================================
+  // RUN WORKFLOW
+  // ======================================================
+
   const runWorkflow = async () => {
     try {
       setRunning(true);
+
       setMessage("");
+
+      // reset statuses
+      setNodeStatuses({});
 
       const response = await api.post(
         `/workflows/${params.id}/run`
@@ -65,12 +112,71 @@ export default function WorkflowDetailPage() {
     } catch (error: any) {
       setMessage(
         error?.response?.data?.error ||
-        "failed to run workflow"
+          "failed to run workflow"
       );
     } finally {
       setRunning(false);
     }
   };
+
+  // ======================================================
+  // INITIAL LOAD
+  // ======================================================
+
+  useEffect(() => {
+    fetchWorkflow();
+  }, []);
+
+  // ======================================================
+  // SSE REALTIME
+  // ======================================================
+
+  useEffect(() => {
+    const eventSource =
+      new EventSource(
+        "http://localhost:8080/events"
+      );
+
+    eventSource.onmessage = (
+      event
+    ) => {
+      try {
+        const data = JSON.parse(
+          event.data
+        );
+
+        // ignore other workflows
+        if (
+          data.workflow_id !==
+          workflow?.ID
+        ) {
+          return;
+        }
+
+        // update node status
+        if (
+          data.node_id &&
+          data.status
+        ) {
+          setNodeStatuses((prev) => ({
+            ...prev,
+            [data.node_id]:
+              data.status,
+          }));
+        }
+      } catch (error) {
+        console.error(error);
+      }
+    };
+
+    return () => {
+      eventSource.close();
+    };
+  }, [workflow]);
+
+  // ======================================================
+  // LOADING
+  // ======================================================
 
   if (loading) {
     return (
@@ -82,6 +188,10 @@ export default function WorkflowDetailPage() {
     );
   }
 
+  // ======================================================
+  // NOT FOUND
+  // ======================================================
+
   if (!workflow) {
     return (
       <DashboardLayout>
@@ -92,48 +202,122 @@ export default function WorkflowDetailPage() {
     );
   }
 
+  // ======================================================
+  // RENDER
+  // ======================================================
+
   return (
     <DashboardLayout>
-      <div className="space-y-6">
+      <div className="space-y-8">
+        {/* ====================================================== */}
         {/* HEADER */}
-        <div className="flex items-center justify-between">
-          <div>
+        {/* ====================================================== */}
+
+        <div
+          className="
+            relative
+            overflow-hidden
+            rounded-[40px]
+            bg-gradient-to-br
+            from-blue-600
+            via-blue-500
+            to-sky-400
+            p-10
+            text-white
+            shadow-2xl
+            shadow-blue-100
+          "
+        >
+          <div className="absolute top-0 right-0 w-72 h-72 bg-white/10 rounded-full blur-3xl" />
+
+          <div className="relative z-10 flex items-center justify-between gap-10">
+            {/* LEFT */}
+            <div>
+              <button
+                onClick={() =>
+                  router.back()
+                }
+                className="
+                  inline-flex
+                  items-center
+                  gap-2
+                  text-white/90
+                  hover:text-white
+                  mb-6
+                "
+              >
+                <ArrowLeft size={18} />
+
+                Back
+              </button>
+
+              <div
+                className="
+                  inline-flex
+                  items-center
+                  gap-2
+                  bg-white/15
+                  px-4
+                  py-2
+                  rounded-2xl
+                  backdrop-blur-sm
+                  border
+                  border-white/10
+                  mb-6
+                "
+              >
+                <GitBranch size={18} />
+
+                <span className="text-sm font-medium">
+                  DAG Workflow
+                </span>
+              </div>
+
+              <h1 className="text-5xl font-black">
+                {workflow.name}
+              </h1>
+
+              <p className="text-blue-100 text-lg mt-5">
+                Realtime workflow
+                orchestration & DAG
+                execution monitoring.
+              </p>
+            </div>
+
+            {/* ACTION */}
             <button
-              onClick={() => router.back()}
-              className="mb-3 text-sm text-blue-600 hover:text-blue-800"
+              onClick={runWorkflow}
+              disabled={running}
+              className="
+                inline-flex
+                items-center
+                gap-3
+                bg-white
+                text-blue-700
+                px-8
+                py-4
+                rounded-3xl
+                font-bold
+                text-lg
+                hover:bg-blue-50
+                transition-all
+                shadow-lg
+                disabled:opacity-50
+              "
             >
-              ← Back
+              <Play size={22} />
+
+              {running
+                ? "Running..."
+                : "Run Workflow"}
             </button>
-
-            <h1 className="text-3xl font-bold text-gray-900">
-              {workflow.name}
-            </h1>
-
-            <p className="text-gray-500 mt-1">
-              Workflow detail & execution
-            </p>
           </div>
-
-          <button
-            onClick={runWorkflow}
-            disabled={running}
-            className="
-              bg-blue-600
-              hover:bg-blue-700
-              disabled:bg-blue-300
-              text-white
-              px-5
-              py-2.5
-              rounded-xl
-              font-medium
-              transition
-            "
-          >
-            {running ? "Running..." : "Run Workflow"}
-          </button>
         </div>
 
+        {/* ====================================================== */}
         {/* MESSAGE */}
+        {/* ====================================================== */}
+
         {message && (
           <div
             className="
@@ -141,155 +325,233 @@ export default function WorkflowDetailPage() {
               border
               border-blue-200
               text-blue-700
-              px-4
-              py-3
-              rounded-xl
+              px-5
+              py-4
+              rounded-2xl
             "
           >
             {message}
           </div>
         )}
 
+        {/* ====================================================== */}
         {/* STATS */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="bg-white rounded-2xl border p-5">
-            <div className="text-sm text-gray-500">
-              Nodes
-            </div>
+        {/* ====================================================== */}
 
-            <div className="text-3xl font-bold mt-2">
-              {workflow.definition.nodes.length}
-            </div>
-          </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {/* NODES */}
+          <div
+            className="
+              bg-white
+              rounded-3xl
+              border
+              border-blue-100
+              p-6
+              shadow-sm
+            "
+          >
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-gray-500 text-sm">
+                  Nodes
+                </p>
 
-          <div className="bg-white rounded-2xl border p-5">
-            <div className="text-sm text-gray-500">
-              Edges
-            </div>
+                <h3 className="text-4xl font-bold text-blue-700 mt-3">
+                  {
+                    workflow.definition
+                      .nodes.length
+                  }
+                </h3>
+              </div>
 
-            <div className="text-3xl font-bold mt-2">
-              {workflow.definition.edges.length}
-            </div>
-          </div>
-
-          <div className="bg-white rounded-2xl border p-5">
-            <div className="text-sm text-gray-500">
-              Status
-            </div>
-
-            <div className="text-3xl font-bold mt-2 text-green-600">
-              Ready
-            </div>
-          </div>
-        </div>
-        {/* GRAPH */}
-        <div className="bg-white rounded-3xl border p-6">
-          <div className="flex items-center justify-between mb-5">
-            <div>
-              <h2 className="text-2xl font-bold">
-                Workflow Graph
-              </h2>
-
-              <p className="text-gray-500 mt-1">
-                Visual DAG execution flow
-              </p>
-            </div>
-          </div>
-
-          
-        </div>
-        {/* NODES *
-        <div className="bg-white rounded-2xl border p-6">
-          <h2 className="text-xl font-semibold mb-5">
-            Workflow Nodes
-          </h2>
-
-          <div className="space-y-3">
-            {workflow.definition.nodes.map((node) => (
               <div
-                key={node.id}
                 className="
-                  border
-                  rounded-xl
-                  p-4
+                  w-14
+                  h-14
+                  rounded-2xl
+                  bg-blue-50
                   flex
                   items-center
-                  justify-between
+                  justify-center
                 "
               >
-                <div>
-                  <div className="font-semibold">
-                    {node.id}
-                  </div>
-
-                  <div className="text-sm text-gray-500">
-                    {node.type}
-                  </div>
-                </div>
-
-                <div
-                  className="
-                    bg-blue-100
-                    text-blue-700
-                    px-3
-                    py-1
-                    rounded-lg
-                    text-sm
-                  "
-                >
-                  node
-                </div>
+                <GitBranch
+                  className="text-blue-600"
+                  size={26}
+                />
               </div>
-            ))}
+            </div>
+          </div>
+
+          {/* EDGES */}
+          <div
+            className="
+              bg-white
+              rounded-3xl
+              border
+              border-blue-100
+              p-6
+              shadow-sm
+            "
+          >
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-gray-500 text-sm">
+                  Connections
+                </p>
+
+                <h3 className="text-4xl font-bold text-blue-700 mt-3">
+                  {
+                    workflow.definition
+                      .edges.length
+                  }
+                </h3>
+              </div>
+
+              <div
+                className="
+                  w-14
+                  h-14
+                  rounded-2xl
+                  bg-blue-50
+                  flex
+                  items-center
+                  justify-center
+                "
+              >
+                <Activity
+                  className="text-blue-600"
+                  size={26}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* STATUS */}
+          <div
+            className="
+              bg-white
+              rounded-3xl
+              border
+              border-blue-100
+              p-6
+              shadow-sm
+            "
+          >
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-gray-500 text-sm">
+                  Status
+                </p>
+
+                <h3 className="text-4xl font-bold text-green-600 mt-3">
+                  LIVE
+                </h3>
+              </div>
+
+              <div
+                className="
+                  w-14
+                  h-14
+                  rounded-2xl
+                  bg-green-50
+                  flex
+                  items-center
+                  justify-center
+                "
+              >
+                <CheckCircle2
+                  className="text-green-600"
+                  size={26}
+                />
+              </div>
+            </div>
           </div>
         </div>
-        */}
-        {/* EDGES */}
-        {/* GRAPH */}
-<div className="bg-white rounded-3xl border border-blue-100 p-6">
-  <div className="mb-6">
-    <h2 className="text-2xl font-bold text-gray-900">
-      Workflow Graph
-    </h2>
 
-    <p className="text-gray-500 mt-1">
-      Visual DAG execution flow
-    </p>
-  </div>
+        {/* ====================================================== */}
+        {/* WORKFLOW GRAPH */}
+        {/* ====================================================== */}
 
-  <WorkflowGraph
-    nodes={workflow.definition.nodes}
-    edges={workflow.definition.edges}
-  />
-</div>
-        <div className="bg-white rounded-2xl border p-6">
-          <h2 className="text-xl font-semibold mb-5">
+        <div
+          className="
+            bg-white
+            rounded-[32px]
+            border
+            border-blue-100
+            p-6
+            shadow-sm
+          "
+        >
+          <div className="mb-6">
+            <h2 className="text-2xl font-bold text-gray-900">
+              Workflow Graph
+            </h2>
+
+            <p className="text-gray-500 mt-1">
+              Visual realtime DAG
+              execution flow.
+            </p>
+          </div>
+
+          <WorkflowGraph
+            nodes={
+              workflow.definition.nodes
+            }
+            edges={
+              workflow.definition.edges
+            }
+            nodeStatuses={
+              nodeStatuses
+            }
+          />
+        </div>
+
+        {/* ====================================================== */}
+        {/* CONNECTIONS */}
+        {/* ====================================================== */}
+
+        <div
+          className="
+            bg-white
+            rounded-[32px]
+            border
+            border-blue-100
+            p-6
+            shadow-sm
+          "
+        >
+          <h2 className="text-2xl font-bold text-gray-900 mb-6">
             Workflow Connections
           </h2>
 
-          <div className="space-y-3">
+          <div className="space-y-4">
             {workflow.definition.edges.map(
-              (edge, index) => (
+              (
+                edge,
+                index
+              ) => (
                 <div
                   key={index}
                   className="
                     border
-                    rounded-xl
-                    p-4
+                    border-blue-100
+                    rounded-2xl
+                    p-5
                     flex
                     items-center
                     justify-between
                   "
                 >
-                  <div className="font-medium">
+                  <div className="font-semibold text-slate-700">
                     {edge.from}
                   </div>
 
-                  <div className="text-gray-400">
+                  <div className="text-blue-400 text-xl">
                     →
                   </div>
 
-                  <div className="font-medium">
+                  <div className="font-semibold text-slate-700">
                     {edge.to}
                   </div>
                 </div>

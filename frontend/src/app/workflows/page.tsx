@@ -19,6 +19,10 @@ import WorkflowRealtimeViewer from "@/components/WorkflowRealtimeViewer";
 
 import api from "@/lib/api";
 
+// ======================================================
+// TYPES
+// ======================================================
+
 interface WorkflowItem {
   ID: number;
   name: string;
@@ -30,10 +34,20 @@ interface Meta {
   total: number;
 }
 
+// ======================================================
+// PAGE
+// ======================================================
+
 export default function WorkflowsPage() {
-  const [workflows, setWorkflows] = useState<
-    WorkflowItem[]
-  >([]);
+  // ======================================================
+  // STATES
+  // ======================================================
+
+  const [workflows, setWorkflows] =
+    useState<WorkflowItem[]>([]);
+
+  const [loading, setLoading] =
+    useState(true);
 
   const [meta, setMeta] = useState<Meta>({
     page: 1,
@@ -41,13 +55,20 @@ export default function WorkflowsPage() {
     total: 0,
   });
 
-  const [search, setSearch] = useState("");
+  const [search, setSearch] =
+    useState("");
+
+  // ======================================================
+  // FETCH WORKFLOWS
+  // ======================================================
 
   const fetchWorkflows = async (
     page = 1,
     searchValue = ""
   ) => {
     try {
+      setLoading(true);
+
       const response = await api.get(
         `/workflows?page=${page}&search=${searchValue}`
       );
@@ -57,17 +78,30 @@ export default function WorkflowsPage() {
       setMeta(response.data.meta);
     } catch (error) {
       console.error(error);
+    } finally {
+      setLoading(false);
     }
   };
+
+  // ======================================================
+  // EFFECT
+  // ======================================================
 
   useEffect(() => {
     fetchWorkflows();
   }, []);
 
+  // ======================================================
+  // RENDER
+  // ======================================================
+
   return (
     <DashboardLayout>
       <div className="space-y-8">
+        {/* ====================================================== */}
         {/* HERO */}
+        {/* ====================================================== */}
+
         <div
           className="
             relative
@@ -83,7 +117,7 @@ export default function WorkflowsPage() {
             shadow-blue-100
           "
         >
-          {/* Blur */}
+          {/* BLUR */}
           <div className="absolute top-0 right-0 w-72 h-72 bg-white/10 rounded-full blur-3xl" />
 
           <div className="absolute bottom-0 left-0 w-72 h-72 bg-white/5 rounded-full blur-3xl" />
@@ -120,12 +154,13 @@ export default function WorkflowsPage() {
               <p className="text-blue-100 text-lg mt-5 leading-relaxed">
                 Manage distributed workflow execution,
                 monitor realtime orchestration,
-                observe DAG processing, and track live
-                execution logs.
+                observe DAG processing, and track
+                live execution logs.
               </p>
 
               {/* ACTIONS */}
               <div className="flex items-center gap-4 mt-8">
+                {/* CREATE */}
                 <Link
                   href="/workflows/create"
                   className="
@@ -148,6 +183,7 @@ export default function WorkflowsPage() {
                   Create Workflow
                 </Link>
 
+                {/* RUNS */}
                 <Link
                   href="/runs"
                   className="
@@ -182,7 +218,7 @@ export default function WorkflowsPage() {
                 border-white/10
                 rounded-3xl
                 p-6
-                min-w-[300px]
+                min-w-[320px]
                 shadow-xl
               "
             >
@@ -217,7 +253,7 @@ export default function WorkflowsPage() {
 
                 <div className="flex items-center justify-between">
                   <span className="text-blue-100">
-                    Realtime
+                    Status
                   </span>
 
                   <span className="text-green-300 font-bold">
@@ -229,7 +265,10 @@ export default function WorkflowsPage() {
           </div>
         </div>
 
+        {/* ====================================================== */}
         {/* SEARCH */}
+        {/* ====================================================== */}
+
         <div
           className="
             bg-white
@@ -281,9 +320,12 @@ export default function WorkflowsPage() {
           </div>
         </div>
 
+        {/* ====================================================== */}
         {/* STATS */}
+        {/* ====================================================== */}
+
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {/* CARD */}
+          {/* TOTAL */}
           <div
             className="
               bg-white
@@ -324,7 +366,7 @@ export default function WorkflowsPage() {
             </div>
           </div>
 
-          {/* CARD */}
+          {/* PAGE */}
           <div
             className="
               bg-white
@@ -365,7 +407,7 @@ export default function WorkflowsPage() {
             </div>
           </div>
 
-          {/* CARD */}
+          {/* LIMIT */}
           <div
             className="
               bg-white
@@ -407,9 +449,27 @@ export default function WorkflowsPage() {
           </div>
         </div>
 
+        {/* ====================================================== */}
         {/* WORKFLOW LIST */}
+        {/* ====================================================== */}
+
         <div className="space-y-5">
-          {workflows.length > 0 ? (
+          {loading ? (
+            <div
+              className="
+                bg-white
+                rounded-3xl
+                border
+                border-blue-100
+                p-12
+                text-center
+              "
+            >
+              <p className="text-slate-500 text-lg">
+                Loading workflows...
+              </p>
+            </div>
+          ) : workflows.length > 0 ? (
             workflows.map((workflow) => (
               <WorkflowCard
                 key={workflow.ID}
@@ -434,18 +494,25 @@ export default function WorkflowsPage() {
               </h3>
 
               <p className="text-gray-500 mt-3">
-                Try another keyword or create a new
-                workflow.
+                Try another keyword or create a
+                new workflow.
               </p>
             </div>
           )}
         </div>
 
+        {/* ====================================================== */}
         {/* REALTIME */}
+        {/* ====================================================== */}
+
         <WorkflowRealtimeViewer />
 
+        {/* ====================================================== */}
         {/* PAGINATION */}
+        {/* ====================================================== */}
+
         <div className="flex items-center justify-between pt-2">
+          {/* PREV */}
           <button
             disabled={meta.page <= 1}
             onClick={() =>
@@ -470,6 +537,7 @@ export default function WorkflowsPage() {
             Previous
           </button>
 
+          {/* PAGE */}
           <div
             className="
               bg-white
@@ -485,6 +553,7 @@ export default function WorkflowsPage() {
             Page {meta.page}
           </div>
 
+          {/* NEXT */}
           <button
             disabled={
               meta.page * meta.limit >=
