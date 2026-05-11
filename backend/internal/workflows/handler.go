@@ -111,7 +111,13 @@ func CreateWorkflow(c *fiber.Ctx) error {
 		Definition: workflow.Definition,
 	}
 
-	database.DB.Create(&version)
+	versionResult := database.DB.Create(&version)
+
+	if versionResult.Error != nil {
+		return c.Status(500).JSON(fiber.Map{
+			"error": "failed to create workflow version",
+		})
+	}
 
 	// =========================
 	// RESPONSE
@@ -129,9 +135,16 @@ func CreateWorkflow(c *fiber.Ctx) error {
 
 func GetWorkflows(c *fiber.Ctx) error {
 
+	user := c.Locals("user").(*jwt.Token)
+
+	claims := user.Claims.(jwt.MapClaims)
+
+	tenantID := uint(claims["tenant_id"].(float64))
+
 	var workflows []models.Workflow
 
 	result := database.DB.
+		Where("tenant_id = ?", tenantID).
 		Order("id desc").
 		Find(&workflows)
 
@@ -152,12 +165,17 @@ func GetWorkflow(c *fiber.Ctx) error {
 
 	id := c.Params("id")
 
+	user := c.Locals("user").(*jwt.Token)
+
+	claims := user.Claims.(jwt.MapClaims)
+
+	tenantID := uint(claims["tenant_id"].(float64))
+
 	var workflow models.Workflow
 
-	result := database.DB.First(
-		&workflow,
-		id,
-	)
+	result := database.DB.
+		Where("id = ? AND tenant_id = ?", id, tenantID).
+		First(&workflow)
 
 	if result.Error != nil {
 		return c.Status(404).JSON(fiber.Map{
@@ -178,10 +196,15 @@ func UpdateWorkflow(c *fiber.Ctx) error {
 
 	var workflow models.Workflow
 
-	result := database.DB.First(
-		&workflow,
-		id,
-	)
+	user := c.Locals("user").(*jwt.Token)
+
+	claims := user.Claims.(jwt.MapClaims)
+
+	tenantID := uint(claims["tenant_id"].(float64))
+
+	result := database.DB.
+		Where("id = ? AND tenant_id = ?", id, tenantID).
+		First(&workflow)
 
 	if result.Error != nil {
 		return c.Status(404).JSON(fiber.Map{
@@ -295,10 +318,15 @@ func DeleteWorkflow(c *fiber.Ctx) error {
 
 	var workflow models.Workflow
 
-	result := database.DB.First(
-		&workflow,
-		id,
-	)
+	user := c.Locals("user").(*jwt.Token)
+
+	claims := user.Claims.(jwt.MapClaims)
+
+	tenantID := uint(claims["tenant_id"].(float64))
+
+	result := database.DB.
+		Where("id = ? AND tenant_id = ?", id, tenantID).
+		First(&workflow)
 
 	if result.Error != nil {
 		return c.Status(404).JSON(fiber.Map{
