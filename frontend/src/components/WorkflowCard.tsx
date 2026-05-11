@@ -1,3 +1,7 @@
+"use client";
+
+import Link from "next/link";
+
 interface WorkflowCardProps {
   id: number;
   name: string;
@@ -20,9 +24,11 @@ export default function WorkflowCard({
           </p>
         </div>
 
-        <button className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-2xl transition">
-          Open
-        </button>
+        <Link href={`/workflows/${id}`}>
+          <button className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-2xl transition">
+            Open
+          </button>
+        </Link>
       </div>
     </div>
   );
