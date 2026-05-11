@@ -11,9 +11,18 @@ func StreamEvents(c *fiber.Ctx) error {
 
 	fmt.Println("New SSE Connection")
 
+	// =========================
+	// SSE HEADERS
+	// =========================
+
 	c.Set("Content-Type", "text/event-stream")
 	c.Set("Cache-Control", "no-cache")
 	c.Set("Connection", "keep-alive")
+	c.Set("Transfer-Encoding", "chunked")
+
+	// =========================
+	// CREATE CLIENT CHANNEL
+	// =========================
 
 	client := make(chan string)
 
@@ -21,41 +30,64 @@ func StreamEvents(c *fiber.Ctx) error {
 
 	fmt.Println("Client registered")
 
-	c.Context().SetBodyStreamWriter(func(w *bufio.Writer) {
+	// =========================
+	// STREAM WRITER
+	// =========================
 
-		fmt.Println("SSE Stream Started")
+	c.Context().SetBodyStreamWriter(
+		func(w *bufio.Writer) {
 
-		defer func() {
+			fmt.Println("SSE Stream Started")
 
-			fmt.Println("Client disconnected")
+			// =========================
+			// CLEANUP
+			// =========================
 
-			delete(Clients, client)
+			defer func() {
 
-			close(client)
-		}()
+				fmt.Println("Client disconnected")
 
-		for {
+				delete(Clients, client)
 
-			message := <-client
+				close(client)
+			}()
 
-			fmt.Println("Writing message:", message)
+			// =========================
+			// KEEP STREAM ALIVE
+			// =========================
 
-			fmt.Fprintf(
-				w,
-				"data: %s\n\n",
-				message,
-			)
+			for {
 
-			err := w.Flush()
+				message, ok := <-client
 
-			if err != nil {
+				if !ok {
+					return
+				}
 
-				fmt.Println("Flush error:", err)
+				// =========================
+				// SEND EVENT
+				// =========================
 
-				return
+				fmt.Fprintf(
+					w,
+					"data: %s\n\n",
+					message,
+				)
+
+				// =========================
+				// FLUSH BUFFER
+				// =========================
+
+				err := w.Flush()
+
+				if err != nil {
+
+					// Browser disconnected
+					return
+				}
 			}
-		}
-	})
+		},
+	)
 
 	return nil
 }

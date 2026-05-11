@@ -1,6 +1,7 @@
 package execution
 
 import (
+	"encoding/json"
 	"fmt"
 	"sync"
 	"time"
@@ -10,7 +11,30 @@ import (
 	"flowforge/internal/realtime"
 )
 
-func ExecuteWithRetry(node Node) error {
+func sendRealtimeEvent(
+	workflowRunID uint,
+	step string,
+	status string,
+	message string,
+) {
+
+	event := map[string]interface{}{
+		"workflow_run_id": workflowRunID,
+		"step":            step,
+		"status":          status,
+		"message":         message,
+		"timestamp":       time.Now().Unix(),
+	}
+
+	eventJSON, _ := json.Marshal(event)
+
+	realtime.SendEvent(string(eventJSON))
+}
+
+func ExecuteWithRetry(
+	workflowRunID uint,
+	node Node,
+) error {
 
 	var err error
 
@@ -37,8 +61,14 @@ func ExecuteWithRetry(node Node) error {
 			backoff,
 		)
 
-		realtime.SendEvent(
-			"RETRYING:" + node.ID,
+		sendRealtimeEvent(
+			workflowRunID,
+			node.ID,
+			"retrying",
+			fmt.Sprintf(
+				"retrying in %v",
+				backoff,
+			),
 		)
 
 		time.Sleep(backoff)
@@ -146,8 +176,11 @@ func ExecuteWorkflow(
 				// REALTIME START EVENT
 				// =========================
 
-				realtime.SendEvent(
-					"STARTED:" + node.ID,
+				sendRealtimeEvent(
+					workflowRun.ID,
+					node.ID,
+					"running",
+					"node started",
 				)
 
 				// =========================
@@ -167,7 +200,10 @@ func ExecuteWorkflow(
 				// EXECUTE NODE
 				// =========================
 
-				err := ExecuteWithRetry(node)
+				err := ExecuteWithRetry(
+					workflowRun.ID,
+					node,
+				)
 
 				if err != nil {
 
@@ -180,8 +216,11 @@ func ExecuteWorkflow(
 					// FAILED EVENT
 					// =========================
 
-					realtime.SendEvent(
-						"FAILED:" + node.ID,
+					sendRealtimeEvent(
+						workflowRun.ID,
+						node.ID,
+						"failed",
+						err.Error(),
 					)
 
 					stepRun.Status = "FAILED"
@@ -207,8 +246,11 @@ func ExecuteWorkflow(
 
 				database.DB.Save(&stepRun)
 
-				realtime.SendEvent(
-					"SUCCESS:" + node.ID,
+				sendRealtimeEvent(
+					workflowRun.ID,
+					node.ID,
+					"success",
+					"node executed successfully",
 				)
 
 			}(nodeID)
@@ -257,7 +299,10 @@ func ExecuteWorkflow(
 
 	fmt.Println("Workflow execution completed")
 
-	realtime.SendEvent(
-		"WORKFLOW_COMPLETED",
+	sendRealtimeEvent(
+		workflowRun.ID,
+		"",
+		"completed",
+		"workflow execution completed",
 	)
 }
