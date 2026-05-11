@@ -141,11 +141,36 @@ func GetWorkflows(c *fiber.Ctx) error {
 
 	tenantID := uint(claims["tenant_id"].(float64))
 
+	// =========================
+	// QUERY PARAMS
+	// =========================
+
+	page := c.QueryInt("page", 1)
+	limit := c.QueryInt("limit", 10)
+	search := c.Query("search")
+
+	offset := (page - 1) * limit
+
+	// =========================
+	// QUERY
+	// =========================
+
 	var workflows []models.Workflow
 
-	result := database.DB.
-		Where("tenant_id = ?", tenantID).
+	query := database.DB.
+		Where("tenant_id = ?", tenantID)
+
+	if search != "" {
+		query = query.Where(
+			"name ILIKE ?",
+			"%"+search+"%",
+		)
+	}
+
+	result := query.
 		Order("id desc").
+		Limit(limit).
+		Offset(offset).
 		Find(&workflows)
 
 	if result.Error != nil {
@@ -154,7 +179,37 @@ func GetWorkflows(c *fiber.Ctx) error {
 		})
 	}
 
-	return c.JSON(workflows)
+	// =========================
+	// TOTAL COUNT
+	// =========================
+
+	var total int64
+
+	countQuery := database.DB.
+		Model(&models.Workflow{}).
+		Where("tenant_id = ?", tenantID)
+
+	if search != "" {
+		countQuery = countQuery.Where(
+			"name ILIKE ?",
+			"%"+search+"%",
+		)
+	}
+
+	countQuery.Count(&total)
+
+	// =========================
+	// RESPONSE
+	// =========================
+
+	return c.JSON(fiber.Map{
+		"data": workflows,
+		"meta": fiber.Map{
+			"page":  page,
+			"limit": limit,
+			"total": total,
+		},
+	})
 }
 
 // =========================

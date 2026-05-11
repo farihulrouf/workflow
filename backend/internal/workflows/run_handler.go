@@ -56,12 +56,37 @@ func GetWorkflowRuns(c *fiber.Ctx) error {
 
 	tenantID := uint(claims["tenant_id"].(float64))
 
+	// =========================
+	// QUERY PARAMS
+	// =========================
+
+	page := c.QueryInt("page", 1)
+	limit := c.QueryInt("limit", 10)
+	status := c.Query("status")
+
+	offset := (page - 1) * limit
+
+	// =========================
+	// QUERY
+	// =========================
+
 	var runs []models.WorkflowRun
 
-	result := database.DB.
+	query := database.DB.
 		Joins("JOIN workflows ON workflows.id = workflow_runs.workflow_id").
-		Where("workflows.tenant_id = ?", tenantID).
+		Where("workflows.tenant_id = ?", tenantID)
+
+	if status != "" {
+		query = query.Where(
+			"workflow_runs.status = ?",
+			status,
+		)
+	}
+
+	result := query.
 		Order("workflow_runs.id desc").
+		Limit(limit).
+		Offset(offset).
 		Find(&runs)
 
 	if result.Error != nil {
@@ -70,7 +95,38 @@ func GetWorkflowRuns(c *fiber.Ctx) error {
 		})
 	}
 
-	return c.JSON(runs)
+	// =========================
+	// TOTAL COUNT
+	// =========================
+
+	var total int64
+
+	countQuery := database.DB.
+		Model(&models.WorkflowRun{}).
+		Joins("JOIN workflows ON workflows.id = workflow_runs.workflow_id").
+		Where("workflows.tenant_id = ?", tenantID)
+
+	if status != "" {
+		countQuery = countQuery.Where(
+			"workflow_runs.status = ?",
+			status,
+		)
+	}
+
+	countQuery.Count(&total)
+
+	// =========================
+	// RESPONSE
+	// =========================
+
+	return c.JSON(fiber.Map{
+		"data": runs,
+		"meta": fiber.Map{
+			"page":  page,
+			"limit": limit,
+			"total": total,
+		},
+	})
 }
 
 func GetWorkflowRun(c *fiber.Ctx) error {
