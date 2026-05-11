@@ -18,6 +18,7 @@ import {
   Activity,
   GitBranch,
   CheckCircle2,
+  History,
 } from "lucide-react";
 
 // ======================================================
@@ -132,6 +133,8 @@ export default function WorkflowDetailPage() {
   // ======================================================
 
   useEffect(() => {
+    if (!workflow) return;
+
     const eventSource =
       new EventSource(
         "http://localhost:8080/events"
@@ -145,22 +148,14 @@ export default function WorkflowDetailPage() {
           event.data
         );
 
-        // ignore other workflows
-        if (
-          data.workflow_id !==
-          workflow?.ID
-        ) {
-          return;
-        }
-
         // update node status
         if (
-          data.node_id &&
+          data.step &&
           data.status
         ) {
           setNodeStatuses((prev) => ({
             ...prev,
-            [data.node_id]:
+            [data.step]:
               data.status,
           }));
         }
@@ -284,33 +279,67 @@ export default function WorkflowDetailPage() {
               </p>
             </div>
 
-            {/* ACTION */}
-            <button
-              onClick={runWorkflow}
-              disabled={running}
-              className="
-                inline-flex
-                items-center
-                gap-3
-                bg-white
-                text-blue-700
-                px-8
-                py-4
-                rounded-3xl
-                font-bold
-                text-lg
-                hover:bg-blue-50
-                transition-all
-                shadow-lg
-                disabled:opacity-50
-              "
-            >
-              <Play size={22} />
+            {/* ACTIONS */}
+            <div className="flex flex-col gap-4">
+              {/* RUN BUTTON */}
+              <button
+                onClick={runWorkflow}
+                disabled={running}
+                className="
+                  inline-flex
+                  items-center
+                  justify-center
+                  gap-3
+                  bg-white
+                  text-blue-700
+                  px-8
+                  py-4
+                  rounded-3xl
+                  font-bold
+                  text-lg
+                  hover:bg-blue-50
+                  transition-all
+                  shadow-lg
+                  disabled:opacity-50
+                "
+              >
+                <Play size={22} />
 
-              {running
-                ? "Running..."
-                : "Run Workflow"}
-            </button>
+                {running
+                  ? "Running..."
+                  : "Run Workflow"}
+              </button>
+
+              {/* VERSION BUTTON */}
+              <button
+                onClick={() =>
+                  router.push(
+                    `/workflows/${workflow.ID}/versions`
+                  )
+                }
+                className="
+                  inline-flex
+                  items-center
+                  justify-center
+                  gap-3
+                  bg-blue-900/30
+                  text-white
+                  px-8
+                  py-4
+                  rounded-3xl
+                  font-bold
+                  text-lg
+                  hover:bg-blue-900/40
+                  transition-all
+                  border
+                  border-white/20
+                "
+              >
+                <History size={22} />
+
+                View Versions
+              </button>
+            </div>
           </div>
         </div>
 

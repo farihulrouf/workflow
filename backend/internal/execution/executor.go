@@ -204,7 +204,7 @@ func ExecuteWorkflow(
 
 			wg.Add(1)
 
-			func(id string) {
+			go func(id string) {
 
 				defer wg.Done()
 

@@ -93,6 +93,13 @@ func Setup(app *fiber.App) {
 	)
 
 	app.Post(
+		"/workflows/:id/rollback/:versionId",
+		middleware.Protected(),
+		middleware.RequireRoles("admin", "editor"),
+		workflows.RollbackWorkflow,
+	)
+
+	app.Post(
 		"/workflows/:id/run",
 		middleware.Protected(),
 		middleware.RequireRoles("admin", "editor"),
