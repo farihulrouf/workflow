@@ -65,7 +65,7 @@ export default function WorkflowDetailPage() {
     } catch (error: any) {
       setMessage(
         error?.response?.data?.error ||
-          "failed to run workflow"
+        "failed to run workflow"
       );
     } finally {
       setRunning(false);
@@ -183,24 +183,21 @@ export default function WorkflowDetailPage() {
           </div>
         </div>
         {/* GRAPH */}
-<div className="bg-white rounded-3xl border p-6">
-  <div className="flex items-center justify-between mb-5">
-    <div>
-      <h2 className="text-2xl font-bold">
-        Workflow Graph
-      </h2>
+        <div className="bg-white rounded-3xl border p-6">
+          <div className="flex items-center justify-between mb-5">
+            <div>
+              <h2 className="text-2xl font-bold">
+                Workflow Graph
+              </h2>
 
-      <p className="text-gray-500 mt-1">
-        Visual DAG execution flow
-      </p>
-    </div>
-  </div>
+              <p className="text-gray-500 mt-1">
+                Visual DAG execution flow
+              </p>
+            </div>
+          </div>
 
-  <WorkflowGraph
-    nodes={workflow.definition.nodes}
-    edges={workflow.definition.edges}
-  />
-</div>
+          
+        </div>
         {/* NODES *
         <div className="bg-white rounded-2xl border p-6">
           <h2 className="text-xl font-semibold mb-5">
@@ -248,6 +245,23 @@ export default function WorkflowDetailPage() {
         </div>
         */}
         {/* EDGES */}
+        {/* GRAPH */}
+<div className="bg-white rounded-3xl border border-blue-100 p-6">
+  <div className="mb-6">
+    <h2 className="text-2xl font-bold text-gray-900">
+      Workflow Graph
+    </h2>
+
+    <p className="text-gray-500 mt-1">
+      Visual DAG execution flow
+    </p>
+  </div>
+
+  <WorkflowGraph
+    nodes={workflow.definition.nodes}
+    edges={workflow.definition.edges}
+  />
+</div>
         <div className="bg-white rounded-2xl border p-6">
           <h2 className="text-xl font-semibold mb-5">
             Workflow Connections

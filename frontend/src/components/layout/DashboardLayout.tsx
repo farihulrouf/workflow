@@ -62,7 +62,7 @@ export default function DashboardLayout({
 
         {/* NAVIGATION */}
         <nav className="flex-1 px-5 py-6 space-y-2">
-          {/* DASHBOARD */}
+          {/* DASHBOARD *
           <Link
             href="/dashboard"
             className={`
@@ -84,7 +84,7 @@ export default function DashboardLayout({
             <LayoutDashboard size={20} />
             Dashboard
           </Link>
-
+          */}
           {/* WORKFLOWS */}
           <Link
             href="/workflows"
