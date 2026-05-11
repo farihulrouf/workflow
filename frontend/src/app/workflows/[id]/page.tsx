@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-
+import WorkflowGraph from "@/components/WorkflowGraph";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import api from "@/lib/api";
 
@@ -182,8 +182,26 @@ export default function WorkflowDetailPage() {
             </div>
           </div>
         </div>
+        {/* GRAPH */}
+<div className="bg-white rounded-3xl border p-6">
+  <div className="flex items-center justify-between mb-5">
+    <div>
+      <h2 className="text-2xl font-bold">
+        Workflow Graph
+      </h2>
 
-        {/* NODES */}
+      <p className="text-gray-500 mt-1">
+        Visual DAG execution flow
+      </p>
+    </div>
+  </div>
+
+  <WorkflowGraph
+    nodes={workflow.definition.nodes}
+    edges={workflow.definition.edges}
+  />
+</div>
+        {/* NODES *
         <div className="bg-white rounded-2xl border p-6">
           <h2 className="text-xl font-semibold mb-5">
             Workflow Nodes
@@ -228,7 +246,7 @@ export default function WorkflowDetailPage() {
             ))}
           </div>
         </div>
-
+        */}
         {/* EDGES */}
         <div className="bg-white rounded-2xl border p-6">
           <h2 className="text-xl font-semibold mb-5">
