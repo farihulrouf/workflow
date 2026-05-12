@@ -2,9 +2,15 @@
 
 import Link from "next/link";
 
-import { ReactNode } from "react";
+import {
+  ReactNode,
+  useEffect,
+  useState,
+} from "react";
 
 import { usePathname } from "next/navigation";
+
+import { jwtDecode } from "jwt-decode";
 
 import {
   LayoutDashboard,
@@ -17,10 +23,57 @@ interface Props {
   children: ReactNode;
 }
 
+interface JwtPayload {
+  sub?: string;
+  email?: string;
+  username?: string;
+}
+
 export default function DashboardLayout({
   children,
 }: Props) {
+
   const pathname = usePathname();
+
+  const [email, setEmail] =
+    useState("Unknown User");
+
+  useEffect(() => {
+
+    const token =
+      localStorage.getItem("token");
+
+    if (!token) return;
+
+    try {
+
+      const decoded =
+        jwtDecode<JwtPayload>(token);
+
+      console.log(decoded);
+
+      if (decoded.email) {
+
+        setEmail(decoded.email);
+
+      } else if (decoded.sub) {
+
+        setEmail(decoded.sub);
+
+      } else if (decoded.username) {
+
+        setEmail(decoded.username);
+      }
+
+    } catch (err) {
+
+      console.error(
+        "JWT decode error:",
+        err,
+      );
+    }
+
+  }, []);
 
   const isActive = (path: string) => {
     return pathname.startsWith(path);
@@ -28,6 +81,7 @@ export default function DashboardLayout({
 
   return (
     <div className="min-h-screen bg-[#f4f8fc] flex">
+
       {/* SIDEBAR */}
       <aside
         className="
@@ -42,8 +96,10 @@ export default function DashboardLayout({
           shadow-sm
         "
       >
+
         {/* LOGO */}
         <div className="px-8 py-8 border-b border-blue-50">
+
           <h1
             className="
               text-3xl
@@ -58,11 +114,12 @@ export default function DashboardLayout({
           <p className="text-sm text-gray-400 mt-1">
             Workflow Engine
           </p>
+
         </div>
 
         {/* NAVIGATION */}
         <nav className="flex-1 px-5 py-6 space-y-2">
-        
+
           <Link
             href="/dashboard"
             className={`
@@ -75,7 +132,7 @@ export default function DashboardLayout({
               transition-all
 
               ${
-                isActive("/dashboard")
+                pathname === "/dashboard"
                   ? "bg-blue-600 text-white shadow-md shadow-blue-200"
                   : "text-gray-700 hover:bg-blue-50 hover:text-blue-700"
               }
@@ -84,8 +141,7 @@ export default function DashboardLayout({
             <LayoutDashboard size={20} />
             Dashboard
           </Link>
-          
-          {/* WORKFLOWS */}
+
           <Link
             href="/workflows"
             className={`
@@ -98,7 +154,7 @@ export default function DashboardLayout({
               transition-all
 
               ${
-                isActive("/workflows")
+                pathname.startsWith("/workflows")
                   ? "bg-blue-600 text-white shadow-md shadow-blue-200"
                   : "text-gray-700 hover:bg-blue-50 hover:text-blue-700"
               }
@@ -108,7 +164,6 @@ export default function DashboardLayout({
             Workflows
           </Link>
 
-          {/* RUNS */}
           <Link
             href="/runs"
             className={`
@@ -121,7 +176,7 @@ export default function DashboardLayout({
               transition-all
 
               ${
-                isActive("/runs")
+                pathname.startsWith("/runs")
                   ? "bg-blue-600 text-white shadow-md shadow-blue-200"
                   : "text-gray-700 hover:bg-blue-50 hover:text-blue-700"
               }
@@ -130,13 +185,39 @@ export default function DashboardLayout({
             <Activity size={20} />
             Runs
           </Link>
+
         </nav>
 
-        {/* FOOTER */}
+        {/* USER INFO */}
         <div className="p-5 border-t border-blue-50">
+
+          <div
+            className="
+              bg-blue-50
+              rounded-2xl
+              p-4
+              mb-4
+              border
+              border-blue-100
+            "
+          >
+
+            <p className="text-sm text-gray-500">
+              Logged in as
+            </p>
+
+            <p className="font-semibold text-blue-700 break-all">
+              {email}
+            </p>
+
+          </div>
+
           <button
             onClick={() => {
-              localStorage.removeItem("token");
+
+              localStorage.removeItem(
+                "token",
+              );
 
               window.location.href =
                 "/login";
@@ -159,11 +240,14 @@ export default function DashboardLayout({
             <LogOut size={18} />
             Logout
           </button>
+
         </div>
+
       </aside>
 
       {/* MAIN */}
       <main className="flex-1 flex flex-col">
+
         {/* TOPBAR */}
         <header
           className="
@@ -181,7 +265,9 @@ export default function DashboardLayout({
             z-50
           "
         >
+
           <div>
+
             <h2
               className="
                 text-xl
@@ -195,6 +281,7 @@ export default function DashboardLayout({
             <p className="text-sm text-gray-400">
               Multi Tenant Workflow Engine
             </p>
+
           </div>
 
           <div
@@ -210,15 +297,18 @@ export default function DashboardLayout({
               border-blue-100
             "
           >
-            日本スタイル UI
+            Realtime Monitoring
           </div>
+
         </header>
 
         {/* CONTENT */}
         <div className="p-8">
           {children}
         </div>
+
       </main>
+
     </div>
   );
 }
