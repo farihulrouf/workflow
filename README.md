@@ -362,3 +362,8 @@ Add screenshots here:
 
 * workflow dashboard
 * realtime execut
+
+
+# AI Enhancement Status
+
+AI-powered workflow analysis was planned for the MVP but intentionally deferred to prioritize orchestration reliability, realtime execution monitoring, and multi-tenant stability within the delivery timeline.
