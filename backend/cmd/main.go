@@ -30,6 +30,7 @@ func main() {
 	// =========================
 
 	database.ConnectDB()
+	database.Seed()
 
 	// =========================
 	// INIT REDIS

@@ -13,9 +13,11 @@ import (
 )
 
 func Login(c *fiber.Ctx) error {
+
 	var body LoginRequest
 
 	if err := c.BodyParser(&body); err != nil {
+
 		return c.Status(400).JSON(fiber.Map{
 			"error": "invalid body",
 		})
@@ -23,9 +25,12 @@ func Login(c *fiber.Ctx) error {
 
 	var user models.User
 
-	result := database.DB.Where("email = ?", body.Email).First(&user)
+	result := database.DB.
+		Where("email = ?", body.Email).
+		First(&user)
 
 	if result.Error != nil {
+
 		return c.Status(401).JSON(fiber.Map{
 			"error": "invalid credentials",
 		})
@@ -37,6 +42,7 @@ func Login(c *fiber.Ctx) error {
 	)
 
 	if err != nil {
+
 		return c.Status(401).JSON(fiber.Map{
 			"error": "invalid credentials",
 		})
@@ -45,15 +51,24 @@ func Login(c *fiber.Ctx) error {
 	claims := jwt.MapClaims{
 		"user_id":   user.ID,
 		"tenant_id": user.TenantID,
+		"email":     user.Email,
 		"role":      user.Role,
-		"exp":       time.Now().Add(time.Hour * 24).Unix(),
+		"exp": time.Now().
+			Add(time.Hour * 24).
+			Unix(),
 	}
 
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	token := jwt.NewWithClaims(
+		jwt.SigningMethodHS256,
+		claims,
+	)
 
-	t, err := token.SignedString([]byte(os.Getenv("JWT_SECRET")))
+	t, err := token.SignedString(
+		[]byte(os.Getenv("JWT_SECRET")),
+	)
 
 	if err != nil {
+
 		return c.Status(500).JSON(fiber.Map{
 			"error": "failed to generate token",
 		})

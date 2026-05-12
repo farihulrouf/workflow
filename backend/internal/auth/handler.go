@@ -31,7 +31,7 @@ func Register(c *fiber.Ctx) error {
 	user := models.User{
 		Email:    body.Email,
 		Password: string(hashedPassword),
-		Role:     "ADMIN",
+		Role:     "admin",
 		TenantID: tenant.ID,
 	}
 
