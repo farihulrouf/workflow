@@ -49,6 +49,10 @@ func ExecuteWithRetry(
 		err = ExecuteNode(node)
 
 		if err == nil {
+			fmt.Println(
+				"NODE EXECUTED SUCCESSFULLY:",
+				node.ID,
+			)
 			return nil
 		}
 
@@ -85,7 +89,7 @@ func ExecuteWorkflow(
 	// =====================================
 	// CREATE WORKFLOW RUN
 	// =====================================
-
+	startTime := time.Now()
 	workflowRun := models.WorkflowRun{
 		WorkflowID: workflowID,
 		Status:     "RUNNING",
@@ -191,7 +195,10 @@ func ExecuteWorkflow(
 	for len(queue) > 0 {
 
 		currentBatch := queue
-
+		fmt.Println("================================")
+		fmt.Println("NEW EXECUTION BATCH")
+		fmt.Println("CURRENT QUEUE:", queue)
+		fmt.Println("================================")
 		queue = []string{}
 
 		var wg sync.WaitGroup
@@ -205,7 +212,7 @@ func ExecuteWorkflow(
 			wg.Add(1)
 
 			go func(id string) {
-
+				fmt.Println("GOROUTINE STARTED:", id)
 				defer wg.Done()
 
 				node := nodes[id]
@@ -214,6 +221,10 @@ func ExecuteWorkflow(
 					"START EXECUTE NODE:",
 					node.ID,
 				)
+				fmt.Println("NODE DETAIL")
+				fmt.Println("ID:", node.ID)
+				fmt.Println("TYPE:", node.Type)
+				fmt.Println("MAX RETRIES:", node.MaxRetries)
 
 				// =====================================
 				// REALTIME EVENT
@@ -414,6 +425,7 @@ func ExecuteWorkflow(
 	fmt.Println("==========")
 	fmt.Println("WORKFLOW FINISHED")
 	fmt.Println("FINAL STATUS:", workflowRun.Status)
+	fmt.Println("TOTAL DURATION:", time.Since(startTime))
 	fmt.Println("==========")
 
 	go sendRealtimeEvent(
