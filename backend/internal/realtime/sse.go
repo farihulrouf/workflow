@@ -36,7 +36,21 @@ func StartBroker() {
 
 				fmt.Println("Send to client")
 
-				client <- message
+				func(client chan string) {
+
+					defer func() {
+
+						if recover() != nil {
+
+							fmt.Println("Client disconnected")
+
+							delete(Clients, client)
+						}
+					}()
+
+					client <- message
+
+				}(client)
 			}
 		}
 	}()

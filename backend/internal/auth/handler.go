@@ -29,6 +29,7 @@ func Register(c *fiber.Ctx) error {
 	database.DB.Create(&tenant)
 
 	user := models.User{
+		Name:     body.Name, // <--- simpan nama
 		Email:    body.Email,
 		Password: string(hashedPassword),
 		Role:     "admin",
